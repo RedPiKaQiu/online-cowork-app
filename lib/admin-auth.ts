@@ -63,7 +63,10 @@ export function isSameOrigin(request: NextRequest) {
   const origin = request.headers.get("origin")
   if (!origin) return false
   try {
-    return new URL(origin).origin === new URL(request.url).origin
+    const protocol = request.headers.get("x-forwarded-proto") ?? new URL(request.url).protocol.replace(":", "")
+    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host")
+    if (!host) return false
+    return new URL(origin).origin === `${protocol}://${host}`
   } catch {
     return false
   }
