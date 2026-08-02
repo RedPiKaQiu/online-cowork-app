@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import type { NextRequest } from "next/server"
 
 import { adminSessionMaxAge, createSession, verifyPassword, verifySession } from "@/lib/admin-security"
+import { requiredEnv } from "@/lib/runtime-config"
 
 export const adminSessionCookieName = "cowork_admin_session"
 
@@ -73,11 +74,8 @@ export function safeReturnPath(path: string | null | undefined) {
 }
 
 function getAdminConfig(): AdminConfig {
-  const email = process.env.ADMIN_EMAIL
-  const passwordHash = process.env.ADMIN_PASSWORD_HASH
-  const sessionSecret = process.env.SESSION_SECRET
-  if (!email || !passwordHash || !sessionSecret) {
-    throw new Error("Administrator authentication is not configured.")
-  }
+  const email = requiredEnv("ADMIN_EMAIL")
+  const passwordHash = requiredEnv("ADMIN_PASSWORD_HASH")
+  const sessionSecret = requiredEnv("SESSION_SECRET")
   return { email, passwordHash, sessionSecret }
 }

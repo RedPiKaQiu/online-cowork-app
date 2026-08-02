@@ -5,6 +5,8 @@ import { ProjectSettings } from "@/components/admin/project-settings"
 import { requireAdminPage } from "@/lib/admin-auth"
 import { findAdminProject } from "@/lib/admin-projects"
 
+export const dynamic = "force-dynamic"
+
 type PageProps = { params: Promise<{ id: string }> }
 
 export default async function ProjectSettingsPage({ params }: PageProps) {

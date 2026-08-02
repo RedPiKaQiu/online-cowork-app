@@ -3,6 +3,8 @@ import { ProjectList } from "@/components/admin/project-list"
 import { requireAdminPage } from "@/lib/admin-auth"
 import { listActiveProjects } from "@/lib/admin-projects"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminProjectsPage() {
   await requireAdminPage("/admin/projects")
   const projects = await listActiveProjects()

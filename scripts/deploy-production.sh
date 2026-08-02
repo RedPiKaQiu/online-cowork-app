@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 test -f .env.production
+set -a; . ./.env.production; set +a
+npx --yes pnpm@10.32.1 env:verify
 npx --yes pnpm@10.32.1 install --frozen-lockfile
 npx --yes pnpm@10.32.1 lint
 npx --yes pnpm@10.32.1 typecheck
