@@ -1,0 +1,27 @@
+schema: spec-driven
+
+context: |
+  项目文档、领域描述、需求说明和任务清单一律使用中文撰写。
+  API 路径、代码标识符、DTO、HTTP 方法、数据库字段、OpenSpec 结构关键词及其他必要技术术语保留英文。
+
+rules:
+  proposal:
+    - 使用中文描述变更动机、影响与能力；必要技术关键词保留英文。
+  specs:
+    - 使用中文描述需求与场景；保留 OpenSpec 所需的英文结构关键词及必要技术关键词。
+  design:
+    - 使用中文描述上下文、决策、风险和迁移方案；必要技术关键词保留英文。
+  tasks:
+    - 所有任务描述使用中文；API 路径、代码标识符、命令和其他必要技术关键词保留英文。
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

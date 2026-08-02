@@ -10,29 +10,32 @@ type TaskEditDialogProps = {
   onSave: (patch: { title: string; description: string }) => void
 }
 
+type TaskEditDialogContentProps = Omit<TaskEditDialogProps, "task"> & {
+  task: Task
+}
+
 export function TaskEditDialog({ task, onClose, onSave }: TaskEditDialogProps) {
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
+  if (!task) return null
+
+  return <TaskEditDialogContent key={task.id} task={task} onClose={onClose} onSave={onSave} />
+}
+
+function TaskEditDialogContent({ task, onClose, onSave }: TaskEditDialogContentProps) {
+  const [title, setTitle] = useState(task.title)
+  const [description, setDescription] = useState(task.description)
   const titleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (task) {
-      setTitle(task.title)
-      setDescription(task.description)
-      // focus after mount
-      requestAnimationFrame(() => titleRef.current?.focus())
-    }
-  }, [task])
+    requestAnimationFrame(() => titleRef.current?.focus())
+  }, [])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose()
     }
-    if (task) window.addEventListener("keydown", onKey)
+    window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [task, onClose])
-
-  if (!task) return null
+  }, [onClose])
 
   function submit() {
     const trimmed = title.trim()
