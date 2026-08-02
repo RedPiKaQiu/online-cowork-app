@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    networks: [cowork_internal]
+    ports: ["127.0.0.1:3000:3000"]
+  migrate:
+    build:
+      context: .
+      target: build
+    env_file: .env.production
+    networks: [cowork_internal]
+    command: ["pnpm", "db:migrate"]
+    profiles: ["tools"]
+networks:
+  cowork_internal:
+    external: true

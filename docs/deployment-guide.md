@@ -4,6 +4,13 @@
 
 服务器安装 Docker、Compose、Git 与 Nginx，云防火墙仅开放 22、80、443，**不得**开放 5432。将仓库放至 `/opt/online-cowork/app`，复制 `.env.example` 为 `.env.production`，并填写 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`DATABASE_URL`、管理员配置、`PROJECT_TOKEN_PEPPER`、HTTPS `APP_URL` 与 `APP_RELEASE`；执行 `chmod 600 .env.production`。
 
+首次初始化数据库（仅一次；后续发布不要停止它）：
+
+```bash
+docker compose -f docker-compose.db.yml up -d
+docker compose -f docker-compose.db.yml ps
+```
+
 将 `deploy/nginx-online-cowork.conf` 复制到 Nginx 站点目录，替换 `YOUR_DOMAIN`，配置已有的 Let's Encrypt 证书路径，然后执行 `sudo nginx -t && sudo systemctl reload nginx`。Nginx 反代 `127.0.0.1:3000`；Compose 不暴露数据库端口。
 
 首次或每次发布：
@@ -15,7 +22,7 @@ sh scripts/deploy-production.sh
 curl -fsS https://YOUR_DOMAIN/api/health/ready
 ```
 
-脚本执行质量门禁、生产迁移、镜像构建、服务重启和就绪检查，且不会执行 seed。发布前执行 `set -a; . ./.env.production; set +a; sh scripts/backup-production.sh` 创建备份。
+脚本执行质量门禁、在 Docker 内部网络运行生产迁移、镜像构建、App 容器替换和就绪检查，且不会执行 seed；不会停止 PostgreSQL。发布前执行 `set -a; . ./.env.production; set +a; sh scripts/backup-production.sh` 创建备份。
 
 ## 发布前
 
