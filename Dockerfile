@@ -8,6 +8,8 @@ RUN pnpm install --frozen-lockfile
 
 FROM dependencies AS build
 COPY . .
+ARG BUILD_DATABASE_URL=postgresql://build:build@localhost:5432/build
+ENV DATABASE_URL=$BUILD_DATABASE_URL
 RUN pnpm build
 
 FROM node:25-alpine AS runner

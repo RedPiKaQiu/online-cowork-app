@@ -4,6 +4,8 @@
 
 服务器安装 Docker、Compose、Git 与 Nginx，云防火墙仅开放 22、80、443，**不得**开放 5432。将仓库放至 `/opt/online-cowork/app`，复制 `.env.example` 为 `.env.production`，并填写 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`DATABASE_URL`、管理员配置、`PROJECT_TOKEN_PEPPER`、HTTPS `APP_URL` 与 `APP_RELEASE`；执行 `chmod 600 .env.production`。
 
+`.env.production` 不会被复制进 Docker 构建上下文；镜像构建使用无权限的占位 `DATABASE_URL`，运行时才由 Compose 注入真实连接串。
+
 首次初始化数据库（仅一次；后续发布不要停止它）：
 
 ```bash
