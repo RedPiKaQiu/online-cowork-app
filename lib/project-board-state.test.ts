@@ -20,4 +20,12 @@ describe("boardReducer", () => {
     let state = boardReducer(initialBoardState(snapshot), { type: "pending", id: "a", value: true }); state = boardReducer(state, { type: "error", error: "失败" }); state = boardReducer(state, { type: "replace", snapshot })
     expect(state.pending).toEqual([]); expect(state.error).toBeNull()
   })
+  it("跟踪刷新与延后刷新状态，并在快照确认后清除它们", () => {
+    let state = boardReducer(initialBoardState(snapshot), { type: "refreshing", value: true })
+    state = boardReducer(state, { type: "refresh-queued", value: true })
+    state = boardReducer(state, { type: "refresh-error", error: "刷新失败" })
+    expect(state.isRefreshing).toBe(true); expect(state.refreshQueued).toBe(true); expect(state.refreshError).toBe("刷新失败")
+    state = boardReducer(state, { type: "replace", snapshot })
+    expect(state.isRefreshing).toBe(false); expect(state.refreshQueued).toBe(false); expect(state.refreshError).toBeNull()
+  })
 })

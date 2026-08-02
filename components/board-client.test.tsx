@@ -8,5 +8,6 @@ describe("BoardClient", () => {
     expect(html).toContain("协作项目")
     expect(html).toContain("暂无事项")
     expect(html).toContain("成员 0")
+    expect(html).toContain("刷新")
   })
 })
