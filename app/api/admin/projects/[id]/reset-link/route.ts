@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { asExpectedVersion, projectErrorResponse, readJson, requireAdminApi } from "@/lib/admin-api"
 import { resetAdminProjectAccessLink } from "@/lib/admin-projects"
+import { auditAdminProjectAction } from "@/lib/audit-log"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   try {
     const result = await resetAdminProjectAccessLink((await params).id, expectedVersion)
+    auditAdminProjectAction("project_link_reset", result.project.id, authorization.session!.email)
     return NextResponse.json(result)
   } catch (error) {
     return projectErrorResponse(error)

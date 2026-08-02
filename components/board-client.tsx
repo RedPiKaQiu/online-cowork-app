@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react"
 import { CheckCircle2, Inbox, ListTodo, Pencil, RefreshCw, Users } from "lucide-react"
 import type { ColumnId, Task } from "@/lib/board-data"
 import { TaskColumn } from "@/components/task-column"
@@ -23,8 +23,6 @@ export function BoardClient({ snapshot, token }: { snapshot: ProjectSnapshot; to
   const [doneOpen, setDoneOpen] = useState(false); const [membersOpen, setMembersOpen] = useState(false); const [editing, setEditing] = useState<{ task: Task; col: ColumnId } | null>(null)
   const [editingProject, setEditingProject] = useState(false); const [projectName, setProjectName] = useState(state.project.name); const [projectDescription, setProjectDescription] = useState(state.project.description)
   const pendingRef = useRef(state.pending)
-  const refreshRunnerRef = useRef<() => Promise<void>>(async () => {})
-  const refreshGateRef = useRef<ReturnType<typeof createSnapshotRefreshGate> | null>(null)
   const pending = (id: string) => state.pending.includes(id)
   useEffect(() => { pendingRef.current = state.pending }, [state.pending])
   const performRefresh = useCallback(async () => {
@@ -38,18 +36,17 @@ export function BoardClient({ snapshot, token }: { snapshot: ProjectSnapshot; to
       dispatch({ type: "refreshing", value: false })
     })
   }, [token])
-  refreshRunnerRef.current = performRefresh
-  if (!refreshGateRef.current) refreshGateRef.current = createSnapshotRefreshGate(() => refreshRunnerRef.current())
+  const refreshGate = useMemo(() => createSnapshotRefreshGate(performRefresh), [performRefresh])
   const refreshSnapshot = useCallback(() => {
-    const request = refreshGateRef.current!.request(pendingRef.current.length > 0)
+    const request = refreshGate.request(pendingRef.current.length > 0)
     if (!request) dispatch({ type: "refresh-queued", value: true })
     return request
-  }, [])
+  }, [refreshGate])
   useEffect(() => {
-    if (state.pending.length !== 0 || !refreshGateRef.current?.isQueued()) return
+    if (state.pending.length !== 0 || !refreshGate.isQueued()) return
     dispatch({ type: "refresh-queued", value: false })
-    void refreshGateRef.current.flush(false)
-  }, [refreshSnapshot, state.pending.length])
+    void refreshGate.flush(false)
+  }, [refreshGate, state.pending.length])
   async function mutate(id: string, optimistic: () => void, request: () => Promise<void>) {
     dispatch({ type: "error", error: null }); dispatch({ type: "pending", id, value: true }); optimistic()
     try { await request() } catch (error) {
@@ -60,7 +57,6 @@ export function BoardClient({ snapshot, token }: { snapshot: ProjectSnapshot; to
   }
   function find(id: string) { for (const col of ["box", "todo", "done"] as ColumnId[]) { const task = state.tasks[col].find((item) => item.id === id); if (task) return { task, col } } }
   const editingCurrent = editing ? find(editing.task.id) : undefined
-  useEffect(() => { if (editing && !editingCurrent) setEditing(null) }, [editing, editingCurrent])
   useEffect(() => {
     return subscribeToSnapshotRefresh(window, document, () => void refreshSnapshot())
   }, [refreshSnapshot])

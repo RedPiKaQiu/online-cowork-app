@@ -39,11 +39,11 @@ export function LoginForm() {
         <h1 className="mt-1 text-xl font-semibold">管理员登录</h1>
         <p className="mt-1 text-sm text-muted-foreground">管理项目与协作访问链接</p>
       </div>
-      <label className="mb-1 block text-sm font-medium">邮箱</label>
-      <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="username" required className="mb-4 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
-      <label className="mb-1 block text-sm font-medium">密码</label>
+      <label htmlFor="admin-email" className="mb-1 block text-sm font-medium">邮箱</label>
+      <input id="admin-email" value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="username" required className="mb-4 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
+      <label htmlFor="admin-password" className="mb-1 block text-sm font-medium">密码</label>
       <div className="relative">
-        <input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} autoComplete="current-password" required className="h-10 w-full rounded-xl border border-border bg-background px-3 pr-10 text-sm outline-none focus:border-primary" />
+        <input id="admin-password" value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} autoComplete="current-password" required className="h-10 w-full rounded-xl border border-border bg-background px-3 pr-10 text-sm outline-none focus:border-primary" />
         <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "隐藏密码" : "显示密码"} className="absolute inset-y-0 right-0 grid w-10 place-items-center text-muted-foreground hover:text-foreground">
           {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>

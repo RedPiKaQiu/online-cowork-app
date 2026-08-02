@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockDb } = vi.hoisted(() => ({ mockDb: { select: vi.fn() } }))
+const { mockDb } = vi.hoisted(() => ({ mockDb: { select: vi.fn(), update: vi.fn() } }))
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/db", () => ({ db: mockDb }))
 
 import { ProjectMutationError } from "./project-api"
 import { ProjectLinkNotFoundError } from "./project-snapshots"
-import { getProjectContext, nextProjectMemberColor, normalizeMemberName, normalizeProjectInput, normalizeTaskInput, reorderTaskList } from "./project-mutations"
+import { getProjectContext, nextProjectMemberColor, normalizeMemberName, normalizeProjectInput, normalizeTaskInput, reorderTaskList, updateMemberByToken } from "./project-mutations"
 
 function projectQuery<T>(rows: T[]) {
   return { from: () => ({ where: () => Promise.resolve(rows) }) }
@@ -16,6 +16,7 @@ function projectQuery<T>(rows: T[]) {
 describe("project mutation rules", () => {
   beforeEach(() => {
     mockDb.select.mockReset()
+    mockDb.update.mockReset()
     process.env.PROJECT_TOKEN_PEPPER = "test-pepper"
   })
 
@@ -50,5 +51,15 @@ describe("project mutation rules", () => {
     expect(reorderTaskList(tasks, "a", 2).map((task) => task.id)).toEqual(["b", "c", "a"])
     expect(() => reorderTaskList(tasks, "a", -1)).toThrow(ProjectMutationError)
     expect(() => reorderTaskList(tasks, "a", 3)).toThrow(ProjectMutationError)
+  })
+
+  it("rejects a member ID that does not belong to the accessed project", async () => {
+    mockDb.select.mockReturnValueOnce(projectQuery([{ id: "project-a", name: "A", description: "", version: 1 }]))
+    mockDb.update.mockReturnValue({
+      set: () => ({ where: () => ({ returning: () => Promise.resolve([]) }) }),
+    })
+
+    await expect(updateMemberByToken("a".repeat(43), "member-from-project-b", { name: "Ada" }))
+      .rejects.toMatchObject({ status: 404, message: "成员不存在。" })
   })
 })

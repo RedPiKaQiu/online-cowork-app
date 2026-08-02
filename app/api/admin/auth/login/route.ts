@@ -25,16 +25,6 @@ export async function POST(request: NextRequest) {
   const email = typeof body.email === "string" ? body.email : ""
   const password = typeof body.password === "string" ? body.password : ""
   const authenticated = await authenticateAdmin(email, password)
-  if (process.env.NODE_ENV !== "production") {
-    const configuredHash = process.env.ADMIN_PASSWORD_HASH ?? ""
-    console.info("[admin-login-debug]", {
-      emailMatches: email.trim().toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase(),
-      hashSeparator: configuredHash.includes(":") ? ":" : "$",
-      hashSegments: configuredHash.includes(":") ? configuredHash.split(":").length : configuredHash.split("$").length,
-      hashLength: configuredHash.length,
-      authenticated,
-    })
-  }
   if (!authenticated) {
     recordLoginFailure(identifier)
     return NextResponse.json({ error: "账号或密码错误。" }, { status: 401 })
