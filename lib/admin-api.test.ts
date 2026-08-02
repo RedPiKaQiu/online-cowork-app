@@ -20,6 +20,8 @@ describe("管理员 API 鉴权", () => {
       method: "POST",
       headers: {
         origin: "https://cowork.example.com",
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "cowork.example.com",
         cookie: `${adminSessionCookieName}=${session}`,
       },
     })
@@ -33,11 +35,11 @@ describe("管理员 API 鉴权", () => {
   it("拒绝未认证或跨来源的管理员写请求", async () => {
     const unauthenticated = new NextRequest("https://cowork.example.com/api/admin/projects", {
       method: "POST",
-      headers: { origin: "https://cowork.example.com" },
+      headers: { origin: "https://cowork.example.com", "x-forwarded-proto": "https", "x-forwarded-host": "cowork.example.com" },
     })
     const crossOrigin = new NextRequest("https://cowork.example.com/api/admin/projects", {
       method: "POST",
-      headers: { origin: "https://attacker.example" },
+      headers: { origin: "https://attacker.example", "x-forwarded-proto": "https", "x-forwarded-host": "cowork.example.com" },
     })
 
     expect(requireAdminApi(unauthenticated, { write: true }).response?.status).toBe(401)
