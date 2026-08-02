@@ -10,7 +10,7 @@ const TARGETS: { id: ColumnId; label: string }[] = [
   { id: "todo", label: "当前待办" },
 ]
 
-export function QuickAddBar({ onAdd }: { onAdd: (title: string, column: ColumnId) => void }) {
+export function QuickAddBar({ onAdd, pending = false }: { onAdd: (title: string, column: ColumnId) => void; pending?: boolean }) {
   const [value, setValue] = useState("")
   const [target, setTarget] = useState<ColumnId>("box")
   const composingRef = useRef(false)
@@ -19,7 +19,7 @@ export function QuickAddBar({ onAdd }: { onAdd: (title: string, column: ColumnId
     const trimmed = value.trim()
     if (!trimmed) return
     onAdd(trimmed, target)
-    setValue("")
+    if (!pending) setValue("")
   }
 
   return (
@@ -36,7 +36,7 @@ export function QuickAddBar({ onAdd }: { onAdd: (title: string, column: ColumnId
             <button
               key={t.id}
               type="button"
-              onClick={() => setTarget(t.id)}
+              onClick={() => setTarget(t.id)} disabled={pending}
               className={cn(
                 "rounded-lg px-3 py-1.5 text-xs font-medium transition",
                 target === t.id
@@ -72,10 +72,10 @@ export function QuickAddBar({ onAdd }: { onAdd: (title: string, column: ColumnId
         <button
           type="submit"
           className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-          disabled={!value.trim()}
+          disabled={!value.trim() || pending}
         >
           <Plus className="size-4" />
-          添加
+          {pending ? "添加中…" : "添加"}
         </button>
       </form>
     </div>

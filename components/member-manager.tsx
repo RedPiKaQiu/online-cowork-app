@@ -10,9 +10,10 @@ type MemberManagerProps = {
   onClose: () => void
   onAdd: (name: string) => void
   onRemove: (id: string) => void
+  pending?: boolean
 }
 
-export function MemberManager({ open, members, onClose, onAdd, onRemove }: MemberManagerProps) {
+export function MemberManager({ open, members, onClose, onAdd, onRemove, pending = false }: MemberManagerProps) {
   const [name, setName] = useState("")
   const composingRef = useRef(false)
 
@@ -81,11 +82,11 @@ export function MemberManager({ open, members, onClose, onAdd, onRemove }: Membe
           />
           <button
             type="submit"
-            disabled={!name.trim()}
+            disabled={!name.trim() || pending}
             className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
           >
             <UserPlus className="size-4" />
-            添加
+            {pending ? "处理中…" : "添加"}
           </button>
         </form>
 
@@ -110,7 +111,7 @@ export function MemberManager({ open, members, onClose, onAdd, onRemove }: Membe
               <span className="flex-1 truncate text-sm text-foreground">{m.name}</span>
               <button
                 type="button"
-                onClick={() => onRemove(m.id)}
+                onClick={() => onRemove(m.id)} disabled={pending}
                 aria-label={`移除 ${m.name}`}
                 className="grid size-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
               >

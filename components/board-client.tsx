@@ -1,69 +1,51 @@
 "use client"
 
-import { CheckCircle2, Inbox, ListTodo, Users } from "lucide-react"
+import { useReducer, useState } from "react"
+import { CheckCircle2, Inbox, ListTodo, Pencil, Users } from "lucide-react"
+import type { ColumnId, Task } from "@/lib/board-data"
+import { TaskColumn } from "@/components/task-column"
+import { TaskCard } from "@/components/task-card"
+import { QuickAddBar } from "@/components/quick-add-bar"
+import { MemberManager } from "@/components/member-manager"
+import { DoneDrawer } from "@/components/done-drawer"
+import { TaskEditDialog } from "@/components/task-edit-dialog"
+import { projectBoardApi, ProjectBoardApiError } from "@/lib/project-board-api"
+import { boardReducer, initialBoardState } from "@/lib/project-board-state"
+import type { ProjectSnapshot } from "@/lib/project-snapshot"
 
-import type { ProjectBoardSnapshot, ProjectMemberSnapshot, ProjectSnapshot, ProjectTaskSnapshot } from "@/lib/project-snapshot"
+const columns = [{ id: "box" as const, title: "事项盒子", hint: "将来计划要做的功能", icon: Inbox, accent: "oklch(0.6 0.13 300)" }, { id: "todo" as const, title: "当前待办", hint: "正在推进的事项", icon: ListTodo, accent: "oklch(0.58 0.1 195)" }]
+type Drag = { id: string; from: ColumnId } | null
 
-const columns: { id: keyof ProjectBoardSnapshot; title: string; hint: string; icon: typeof Inbox; accent: string }[] = [
-  { id: "box", title: "事项盒子", hint: "将来计划要做的功能", icon: Inbox, accent: "oklch(0.6 0.13 300)" },
-  { id: "todo", title: "当前待办", hint: "正在推进的事项", icon: ListTodo, accent: "oklch(0.58 0.1 195)" },
-]
-
-export function BoardClient({ snapshot }: { snapshot: ProjectSnapshot }) {
-  const { project, members, tasks } = snapshot
-  const membersById = new Map(members.map((member) => [member.id, member]))
-
-  return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><ListTodo className="size-5" /></span>
-            <div className="min-w-0">
-              <h1 className="truncate font-semibold">{project.name}</h1>
-              {project.description && <p className="truncate text-xs text-muted-foreground">{project.description}</p>}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="size-4" />{members.length} 位成员</span>
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium">
-              <CheckCircle2 className="size-4" style={{ color: "oklch(0.6 0.14 150)" }} />已完成 {tasks.done.length}
-            </span>
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-2">
-        {columns.map((column) => {
-          const Icon = column.icon
-          return <BoardColumn key={column.id} title={column.title} hint={column.hint} icon={<Icon className="size-4" />} accent={column.accent} tasks={tasks[column.id]} membersById={membersById} />
-        })}
-      </main>
-      <section className="mx-auto w-full max-w-6xl px-4 pb-6">
-        <BoardColumn title="已完成" hint="已完成的事项" icon={<CheckCircle2 className="size-4" />} accent="oklch(0.6 0.14 150)" tasks={tasks.done} membersById={membersById} />
-      </section>
-    </div>
-  )
-}
-
-function BoardColumn({ title, hint, icon, accent, tasks, membersById }: { title: string; hint: string; icon: React.ReactNode; accent: string; tasks: ProjectTaskSnapshot[]; membersById: Map<string, ProjectMemberSnapshot> }) {
-  return (
-    <section className="rounded-2xl border border-border bg-card/50 p-3">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2"><span className="grid size-7 place-items-center rounded-lg" style={{ backgroundColor: accent, color: "white" }}>{icon}</span><div><h2 className="text-sm font-semibold">{title}</h2><p className="text-xs text-muted-foreground">{hint}</p></div></div>
-        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">{tasks.length}</span>
-      </header>
-      <ul className="space-y-2">
-        {tasks.length ? tasks.map((task) => <ReadOnlyTaskCard key={task.id} task={task} member={task.assigneeId ? membersById.get(task.assigneeId) : undefined} />) : <li className="rounded-xl border border-dashed border-border/70 p-5 text-center text-xs text-muted-foreground">暂无事项</li>}
-      </ul>
-    </section>
-  )
-}
-
-function ReadOnlyTaskCard({ task, member }: { task: ProjectTaskSnapshot; member?: ProjectMemberSnapshot }) {
-  return <li className="relative rounded-xl border border-border bg-card p-3 shadow-sm">
-    {member && <span aria-hidden className="absolute inset-y-2 left-0 w-1 rounded-full" style={{ backgroundColor: member.color }} />}
-    <p className="text-sm font-medium leading-relaxed text-card-foreground">{task.title}</p>
-    {task.description && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{task.description}</p>}
-    {member && <span className="mt-3 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: member.color, color: member.fg }}>{member.name}</span>}
-  </li>
+export function BoardClient({ snapshot, token }: { snapshot: ProjectSnapshot; token: string }) {
+  const [state, dispatch] = useReducer(boardReducer, snapshot, initialBoardState)
+  const [drag, setDrag] = useState<Drag>(null); const [drop, setDrop] = useState<{ col: ColumnId; index: number } | null>(null)
+  const [doneOpen, setDoneOpen] = useState(false); const [membersOpen, setMembersOpen] = useState(false); const [editing, setEditing] = useState<{ task: Task; col: ColumnId } | null>(null)
+  const [editingProject, setEditingProject] = useState(false); const [projectName, setProjectName] = useState(state.project.name); const [projectDescription, setProjectDescription] = useState(state.project.description)
+  const pending = (id: string) => state.pending.includes(id)
+  async function mutate(id: string, optimistic: () => void, request: () => Promise<void>) {
+    dispatch({ type: "error", error: null }); dispatch({ type: "pending", id, value: true }); optimistic()
+    try { await request() } catch (error) {
+      const message = error instanceof ProjectBoardApiError ? error.message : "操作失败，请重试。"
+      dispatch({ type: "error", error: message })
+      try { dispatch({ type: "replace", snapshot: await projectBoardApi.snapshot(token) }) } catch { dispatch({ type: "error", error: `${message}；无法恢复最新数据，请刷新页面。` }) }
+    } finally { dispatch({ type: "pending", id, value: false }) }
+  }
+  function find(id: string) { for (const col of ["box", "todo", "done"] as ColumnId[]) { const task = state.tasks[col].find((item) => item.id === id); if (task) return { task, col } } }
+  function addTask(title: string, col: ColumnId) { const localId = `local-${crypto.randomUUID()}`; const task = { id: localId, title, description: "", assigneeId: null, version: 1 }
+    void mutate(localId, () => dispatch({ type: "task-upsert", task, status: col }), async () => { const response = await projectBoardApi.createTask(token, { title, status: col }); dispatch({ type: "task-upsert", task: response.task, status: col, previousId: localId }) }) }
+  function patchTask(id: string, patch: Record<string, unknown>, status?: ColumnId) { const found = find(id); if (!found || pending(id)) return; const to = status ?? found.col; const task = { ...found.task, ...patch, assigneeId: to === "box" ? null : (patch.assigneeId === undefined ? found.task.assigneeId : patch.assigneeId as string | null) }
+    void mutate(id, () => dispatch({ type: "task-upsert", task, status: to, previousId: id }), async () => { const response = await projectBoardApi.updateTask(token, id, { ...patch, status: to, expectedVersion: found.task.version }); dispatch({ type: "task-upsert", task: response.task, status: to, previousId: id }) }) }
+  function removeTask(id: string) { const found = find(id); if (!found || pending(id) || !window.confirm("确定删除这条事项吗？")) return; void mutate(id, () => dispatch({ type: "task-remove", id }), async () => { await projectBoardApi.deleteTask(token, id, found.task.version) }) }
+  function reorder(to: ColumnId) { if (!drag) return; const found = find(drag.id); if (!found || pending(drag.id)) return; const index = drop?.col === to ? drop.index : state.tasks[to].length; const source = state.tasks[drag.from].filter((task) => task.id !== drag.id); const target = drag.from === to ? source : state.tasks[to]; const inserted = { ...found.task, assigneeId: to === "box" ? null : found.task.assigneeId }; target.splice(Math.max(0, Math.min(index, target.length)), 0, inserted)
+    setDrag(null); setDrop(null); void mutate(found.task.id, () => dispatch({ type: "columns", columns: drag.from === to ? { [to]: target } : { [drag.from]: source, [to]: target } }), async () => { const response = await projectBoardApi.reorder(token, { taskId: found.task.id, fromStatus: drag.from, toStatus: to, targetIndex: Math.max(0, Math.min(index, target.length - 1)), expectedVersion: found.task.version, mutationId: crypto.randomUUID() }); dispatch({ type: "columns", columns: response.columns }) }) }
+  function addMember(name: string) { const id = "members"; if (pending(id)) return; void mutate(id, () => {}, async () => { const response = await projectBoardApi.createMember(token, name); dispatch({ type: "member-add", member: response.member }) }) }
+  function removeMember(id: string) { if (pending("members")) return; void mutate("members", () => dispatch({ type: "member-remove", id }), async () => { await projectBoardApi.deleteMember(token, id) }) }
+  function saveProject() { if (!projectName.trim() || pending("project")) return; void mutate("project", () => dispatch({ type: "project", project: { ...state.project, name: projectName.trim(), description: projectDescription.trim() } }), async () => { const response = await projectBoardApi.updateProject(token, { name: projectName.trim(), description: projectDescription.trim(), expectedVersion: state.project.version }); dispatch({ type: "project", project: response.project }); setEditingProject(false) }) }
+  const renderCard = (task: Task, col: ColumnId, index: number) => <TaskCard key={task.id} task={task} column={col} members={state.members} isDragging={drag?.id === task.id} isDropTarget={drop?.col === col && drop.index === index && drag?.id !== task.id} onDragStart={() => setDrag({ id: task.id, from: col })} onDragEnd={() => { setDrag(null); setDrop(null) }} onDragOverCard={() => setDrop({ col, index })} onMoveToTodo={() => patchTask(task.id, {}, "todo")} onComplete={() => patchTask(task.id, {}, "done")} onUncomplete={() => patchTask(task.id, {}, "todo")} onAssign={(assigneeId) => patchTask(task.id, { assigneeId })} onEdit={() => setEditing({ task, col })} onDelete={() => removeTask(task.id)} pending={pending(task.id)} />
+  return <div className="flex min-h-dvh flex-col bg-background">
+    <header className="border-b border-border bg-card/60"><div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3"><div className="flex min-w-0 items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><ListTodo className="size-5" /></span>{editingProject ? <div className="flex flex-col gap-1"><input aria-label="项目名称" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="rounded border px-2" /><textarea aria-label="项目说明" value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} className="rounded border px-2 text-xs" rows={2} /><div><button type="button" onClick={saveProject} disabled={pending("project")} className="text-sm text-primary">{pending("project") ? "保存中…" : "保存"}</button><button type="button" onClick={() => setEditingProject(false)} className="ml-3 text-sm text-muted-foreground">取消</button></div></div> : <div><h1 className="font-semibold">{state.project.name}</h1>{state.project.description && <p className="text-xs text-muted-foreground">{state.project.description}</p>}</div>}<button aria-label="编辑项目资料" onClick={() => setEditingProject((value) => !value)} className="p-1 text-muted-foreground"><Pencil className="size-4" /></button></div><div className="flex gap-2"><button type="button" onClick={() => setMembersOpen(true)} className="rounded-xl border px-3 py-2 text-sm"><Users className="mr-1 inline size-4" />成员 {state.members.length}</button><button type="button" onClick={() => setDoneOpen(true)} className="rounded-xl border px-3 py-2 text-sm"><CheckCircle2 className="mr-1 inline size-4" />已完成 {state.tasks.done.length}</button></div></div></header>
+    {state.error && <div role="alert" className="mx-auto mt-3 w-full max-w-6xl rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">{state.error}</div>}
+    <main className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-2">{columns.map((column) => <TaskColumn key={column.id} {...column} count={state.tasks[column.id].length} isActiveDropZone={drag !== null && drop?.col === column.id} onDragOverColumn={() => setDrop({ col: column.id, index: state.tasks[column.id].length })} onDrop={() => reorder(column.id)} empty={<div className="p-6 text-center text-xs text-muted-foreground">暂无事项</div>}>{state.tasks[column.id].map((task, index) => renderCard(task, column.id, index))}</TaskColumn>)}</main>
+    <QuickAddBar onAdd={addTask} pending={pending("add")} /><DoneDrawer open={doneOpen} count={state.tasks.done.length} onClose={() => setDoneOpen(false)} empty={<div className="p-6 text-center text-xs text-muted-foreground">完成的事项会出现在这里</div>}>{state.tasks.done.map((task, index) => renderCard(task, "done", index))}</DoneDrawer><MemberManager open={membersOpen} members={state.members} onClose={() => setMembersOpen(false)} onAdd={addMember} onRemove={removeMember} pending={pending("members")} /><TaskEditDialog task={editing?.task ?? null} pending={editing ? pending(editing.task.id) : false} onClose={() => setEditing(null)} onSave={(patch) => editing && patchTask(editing.task.id, patch, editing.col)} />
+  </div>
 }

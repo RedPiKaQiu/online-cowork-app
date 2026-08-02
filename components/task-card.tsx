@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight, Check, GripVertical, Pencil, RotateCcw, UserPlus } from "lucide-react"
+import { ArrowRight, Check, GripVertical, Pencil, RotateCcw, Trash2, UserPlus } from "lucide-react"
 import { type ColumnId, type Member, type Task, getMember } from "@/lib/board-data"
 import { cn } from "@/lib/utils"
 
@@ -19,6 +19,8 @@ type TaskCardProps = {
   onUncomplete: () => void
   onAssign: (memberId: string | null) => void
   onEdit: () => void
+  onDelete: () => void
+  pending?: boolean
 }
 
 export function TaskCard({
@@ -35,13 +37,15 @@ export function TaskCard({
   onUncomplete,
   onAssign,
   onEdit,
+  onDelete,
+  pending = false,
 }: TaskCardProps) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const member = getMember(members, task.assigneeId)
 
   return (
     <li
-      draggable
+      draggable={!pending}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={(e) => {
@@ -209,6 +213,9 @@ export function TaskCard({
               取消完成
             </button>
           )}
+          <button type="button" onClick={onDelete} disabled={pending} aria-label="删除事项" className="inline-flex size-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50">
+            <Trash2 className="size-4" />
+          </button>
         </div>
       </div>
     </li>

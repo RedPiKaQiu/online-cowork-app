@@ -8,6 +8,7 @@ type TaskEditDialogProps = {
   task: Task | null
   onClose: () => void
   onSave: (patch: { title: string; description: string }) => void
+  pending?: boolean
 }
 
 type TaskEditDialogContentProps = Omit<TaskEditDialogProps, "task"> & {
@@ -20,7 +21,7 @@ export function TaskEditDialog({ task, onClose, onSave }: TaskEditDialogProps) {
   return <TaskEditDialogContent key={task.id} task={task} onClose={onClose} onSave={onSave} />
 }
 
-function TaskEditDialogContent({ task, onClose, onSave }: TaskEditDialogContentProps) {
+function TaskEditDialogContent({ task, onClose, onSave, pending }: TaskEditDialogContentProps) {
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -98,10 +99,10 @@ function TaskEditDialogContent({ task, onClose, onSave }: TaskEditDialogContentP
           <button
             type="button"
             onClick={submit}
-            disabled={!title.trim()}
+            disabled={!title.trim() || pending}
             className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
           >
-            保存
+            {pending ? "保存中…" : "保存"}
           </button>
         </div>
       </div>

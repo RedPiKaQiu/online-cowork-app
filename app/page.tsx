@@ -1,5 +1,5 @@
-import { CoworkBoard } from "@/components/cowork-board"
+import { redirect } from "next/navigation"
 
 export default function Home() {
-  return <CoworkBoard />
+  redirect("/admin/projects")
 }

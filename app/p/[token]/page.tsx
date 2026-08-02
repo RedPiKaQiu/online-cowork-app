@@ -13,5 +13,5 @@ export default async function ProjectBoardPage({ params }: PageProps) {
     if (error instanceof ProjectLinkNotFoundError) return <ProjectUnavailable />
     throw error
   }
-  return <BoardClient snapshot={snapshot} />
+  return <BoardClient snapshot={snapshot} token={(await params).token} />
 }
