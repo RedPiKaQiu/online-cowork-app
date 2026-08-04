@@ -69,6 +69,7 @@ export const tasks = pgTable(
     status: taskStatus("status").notNull(),
     position: integer("position").notNull(),
     assigneeId: uuid("assignee_id"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     version: integer("version").notNull().default(1),
     createdAt,
     updatedAt,
@@ -85,6 +86,7 @@ export const tasks = pgTable(
       foreignColumns: [members.id, members.projectId],
     }).onDelete("restrict"),
     index("tasks_project_status_position_idx").on(table.projectId, table.status, table.position),
+    index("tasks_project_status_completed_at_position_idx").on(table.projectId, table.status, table.completedAt, table.position),
   ],
 )
 

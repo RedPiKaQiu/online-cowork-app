@@ -7,7 +7,7 @@ vi.mock("@/lib/db", () => ({ db: mockDb }))
 
 import { ProjectMutationError } from "./project-api"
 import { ProjectLinkNotFoundError } from "./project-snapshots"
-import { getProjectContext, nextProjectMemberColor, normalizeMemberName, normalizeProjectInput, normalizeTaskInput, reorderTaskList, updateMemberByToken } from "./project-mutations"
+import { completedAtForStatusTransition, getProjectContext, nextProjectMemberColor, normalizeMemberName, normalizeProjectInput, normalizeTaskInput, reorderTaskList, updateMemberByToken } from "./project-mutations"
 
 function projectQuery<T>(rows: T[]) {
   return { from: () => ({ where: () => Promise.resolve(rows) }) }
@@ -51,6 +51,16 @@ describe("project mutation rules", () => {
     expect(reorderTaskList(tasks, "a", 2).map((task) => task.id)).toEqual(["b", "c", "a"])
     expect(() => reorderTaskList(tasks, "a", -1)).toThrow(ProjectMutationError)
     expect(() => reorderTaskList(tasks, "a", 3)).toThrow(ProjectMutationError)
+  })
+
+  it("只在进入 done 时记录完成时间，并在恢复后重新完成时更新它", () => {
+    const firstCompletedAt = new Date("2026-08-01T10:00:00.000Z")
+    const secondCompletedAt = new Date("2026-08-02T10:00:00.000Z")
+
+    expect(completedAtForStatusTransition("todo", null, "done", firstCompletedAt)).toBe(firstCompletedAt)
+    expect(completedAtForStatusTransition("done", firstCompletedAt, "done", secondCompletedAt)).toBe(firstCompletedAt)
+    expect(completedAtForStatusTransition("done", firstCompletedAt, "todo", secondCompletedAt)).toBeNull()
+    expect(completedAtForStatusTransition("todo", null, "done", secondCompletedAt)).toBe(secondCompletedAt)
   })
 
   it("rejects a member ID that does not belong to the accessed project", async () => {

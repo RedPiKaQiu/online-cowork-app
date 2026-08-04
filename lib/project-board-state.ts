@@ -42,6 +42,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
     .find(({ index }) => index >= 0)
   const tasks = Object.fromEntries(Object.entries(state.tasks).map(([key, items]) => [key, items.filter((task) => task.id !== action.task.id && task.id !== action.previousId)])) as ProjectSnapshot["tasks"]
   if (previous?.column === action.status) tasks[action.status].splice(previous.index, 0, action.task)
+  else if (action.status === "done") tasks.done = [action.task, ...tasks.done]
   else tasks[action.status] = [...tasks[action.status], action.task]
   return { ...state, tasks }
 }

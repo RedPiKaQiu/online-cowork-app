@@ -1,6 +1,6 @@
 import "server-only"
 
-import { and, asc, eq, isNull } from "drizzle-orm"
+import { and, asc, eq, isNull, sql } from "drizzle-orm"
 
 import { members, projects, tasks } from "@/db/schema"
 import { db } from "@/lib/db"
@@ -47,7 +47,11 @@ export async function getProjectSnapshot(token: string): Promise<ProjectSnapshot
       })
       .from(tasks)
       .where(eq(tasks.projectId, project.id))
-      .orderBy(asc(tasks.status), asc(tasks.position)),
+      .orderBy(
+        asc(tasks.status),
+        sql`case when ${tasks.status} = 'done' then ${tasks.completedAt} end desc nulls last`,
+        asc(tasks.position),
+      ),
   ])
 
   return { project, members: projectMembers, tasks: groupProjectTasks(projectTasks) }

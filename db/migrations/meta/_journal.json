@@ -8,6 +8,13 @@
       "when": 1785639662474,
       "tag": "0000_premium_barracuda",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785824228464,
+      "tag": "0001_brown_harrier",
+      "breakpoints": true
     }
   ]
 }
