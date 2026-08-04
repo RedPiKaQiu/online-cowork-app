@@ -4,6 +4,8 @@
 
 适合临时项目、活动筹备和小型团队协作，不需要为每位参与者创建账号。
 
+![Online Cowork 协作看板预览](docs/images/online-cowork-board-preview.svg)
+
 ## 能做什么
 
 - 通过专属链接邀请协作者，无需注册或登录。
