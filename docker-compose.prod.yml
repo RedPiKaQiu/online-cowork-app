@@ -15,6 +15,7 @@ services:
     env_file: .env.production
     depends_on:
       postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
     ports: ["127.0.0.1:3000:3000"]
   migrate:
     build:
@@ -24,6 +25,5 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
     command: ["pnpm", "db:migrate"]
-    profiles: ["tools"]
 volumes:
   postgres_data:

@@ -16,6 +16,7 @@
     "db:seed": "tsx db/seed.ts",
     "db:verify": "tsx db/verify.ts",
     "env:verify": "tsx scripts/verify-production-config.ts",
+    "version:patch": "node scripts/bump-version.mjs",
     "admin:hash-password": "tsx scripts/generate-admin-password-hash.ts",
     "admin:verify-api": "tsx scripts/verify-admin-api.ts"
   },

@@ -2,6 +2,24 @@
 
 ## Nginx + Docker 生产部署
 
+## 版本管理
+
+仓库使用根目录 `VERSION` 记录发布版本。首次克隆后执行 `git config core.hooksPath .githooks`；之后每次 `git commit` 都会自动递增 patch 版本并将 `VERSION` 纳入该提交。需要手动递增时运行 `pnpm version:patch` 并提交 `VERSION`。
+
+### 一键首次部署（单机 App + PostgreSQL）
+
+适用于单台服务器快速上线；`docker-compose.prod.yml` 会依次启动 PostgreSQL、运行一次迁移、再启动 App。复制模板并填写真实机密后运行：
+
+```bash
+cp .env.production.example .env.production
+# 编辑 .env.production，生成 ADMIN_PASSWORD_HASH 后填入
+sh scripts/quickstart-production.sh
+```
+
+App 仅监听 `127.0.0.1:3000`，继续由宿主机 Nginx 提供 HTTPS。后续代码更新再次运行该脚本即可；PostgreSQL 数据保存在 `postgres_data` 卷中，正常更新不会重建或删除它。不要执行 `docker compose -f docker-compose.prod.yml down -v`。
+
+### 推荐的持续发布方式（App 与数据库分离）
+
 服务器安装 Docker、Compose、Git 与 Nginx，云防火墙仅开放 22、80、443，**不得**开放 5432。将仓库放至 `/opt/online-cowork/app`，复制 `.env.example` 为 `.env.production`，并填写 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`DATABASE_URL`、管理员配置、`PROJECT_TOKEN_PEPPER`、HTTPS `APP_URL` 与 `APP_RELEASE`；执行 `chmod 600 .env.production`。
 
 `.env.production` 不会被复制进 Docker 构建上下文；镜像构建使用无权限的占位 `DATABASE_URL`，运行时才由 Compose 注入真实连接串。
