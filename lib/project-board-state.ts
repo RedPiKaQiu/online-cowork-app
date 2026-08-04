@@ -37,7 +37,11 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
   if (action.type === "member-remove") return { ...state, members: state.members.filter((m) => m.id !== action.id), tasks: Object.fromEntries(Object.entries(state.tasks).map(([key, tasks]) => [key, tasks.map((task) => task.assigneeId === action.id ? { ...task, assigneeId: null } : task)])) as ProjectSnapshot["tasks"] }
   if (action.type === "task-remove") return { ...state, tasks: Object.fromEntries(Object.entries(state.tasks).map(([key, tasks]) => [key, tasks.filter((task) => task.id !== action.id)])) as ProjectSnapshot["tasks"] }
   if (action.type === "columns") return { ...state, tasks: { ...state.tasks, ...action.columns } }
+  const previous = (Object.entries(state.tasks) as [ColumnId, Task[]][])
+    .map(([column, items]) => ({ column, index: items.findIndex((task) => task.id === action.task.id || task.id === action.previousId) }))
+    .find(({ index }) => index >= 0)
   const tasks = Object.fromEntries(Object.entries(state.tasks).map(([key, items]) => [key, items.filter((task) => task.id !== action.task.id && task.id !== action.previousId)])) as ProjectSnapshot["tasks"]
-  tasks[action.status] = [...tasks[action.status], action.task]
+  if (previous?.column === action.status) tasks[action.status].splice(previous.index, 0, action.task)
+  else tasks[action.status] = [...tasks[action.status], action.task]
   return { ...state, tasks }
 }
