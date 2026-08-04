@@ -1,61 +1,69 @@
 # 部署指导
 
-## Nginx + Docker 生产部署
+本项目使用 Docker 部署 App 和 PostgreSQL。网络入口、反向代理和 HTTPS 由部署环境自行管理，本说明不包含相关配置。
 
-## 版本管理
+## 准备
 
-仓库使用根目录 `VERSION` 记录发布版本。首次克隆后执行 `git config core.hooksPath .githooks`；之后每次 `git commit` 都会自动递增 patch 版本并将 `VERSION` 纳入该提交。需要手动递增时运行 `pnpm version:patch` 并提交 `VERSION`。
+- Linux 服务器已安装 Docker、Docker Compose 和 Git。
+- 数据库端口 `5432` 不应暴露到公网。
+- 获取代码并进入项目目录：
 
-### 一键首次部署（单机 App + PostgreSQL）
+```bash
+git clone <YOUR_REPOSITORY_URL> /opt/online-cowork/app
+cd /opt/online-cowork/app
+```
 
-适用于单台服务器快速上线；`docker-compose.prod.yml` 会依次启动 PostgreSQL、运行一次迁移、再启动 App。复制模板并填写真实机密后运行：
+## 配置
+
+复制示例文件并限制其权限：
 
 ```bash
 cp .env.production.example .env.production
-# 编辑 .env.production，生成 ADMIN_PASSWORD_HASH 后填入
-sh scripts/quickstart-production.sh
+chmod 600 .env.production
 ```
 
-App 仅监听 `127.0.0.1:3000`，继续由宿主机 Nginx 提供 HTTPS。后续代码更新再次运行该脚本即可；PostgreSQL 数据保存在 `postgres_data` 卷中，正常更新不会重建或删除它。不要执行 `docker compose -f docker-compose.prod.yml down -v`。
+环境变量的用途、试用默认值、安全替换方式均写在 `.env.production.example` 的注释中。默认账号为 `trial@example.com`，密码为 `try-cowork-2026`，只可用于本机或内网试用。
 
-### 推荐的持续发布方式（App 与数据库分离）
+`APP_URL` 默认使用服务器内部地址 `http://127.0.0.1:3000`。若需要让同一内网的其他设备访问链接，将其改为服务器实际内网 IP，例如 `http://192.168.1.20:3000`。对外访问地址由你的网络入口决定，若有变化只需更新 `APP_URL` 后重新部署。
 
-服务器安装 Docker、Compose、Git 与 Nginx，云防火墙仅开放 22、80、443，**不得**开放 5432。将仓库放至 `/opt/online-cowork/app`，复制 `.env.example` 为 `.env.production`，并填写 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`DATABASE_URL`、管理员配置、`PROJECT_TOKEN_PEPPER`、HTTPS `APP_URL` 与 `APP_RELEASE`；执行 `chmod 600 .env.production`。
+## 一键部署（App + PostgreSQL）
 
-`.env.production` 不会被复制进 Docker 构建上下文；镜像构建使用无权限的占位 `DATABASE_URL`，运行时才由 Compose 注入真实连接串。
+适用于单台服务器试用或小规模部署。首次及后续更新均执行：
 
-首次初始化数据库（仅一次；后续发布不要停止它）：
+```bash
+sh scripts/quickstart-production.sh
+curl -fsS http://127.0.0.1:3000/api/health/ready
+```
+
+脚本会启动 PostgreSQL、执行迁移并启动 App。数据保存在 `postgres_data` 卷，正常更新不会删除数据；不要执行 `docker compose -f docker-compose.prod.yml down -v`。
+
+## 分离部署（App 与数据库）
+
+适合需要独立维护数据库的环境。首次初始化数据库：
 
 ```bash
 docker compose -f docker-compose.db.yml up -d
 docker compose -f docker-compose.db.yml ps
 ```
 
-将 `deploy/nginx-online-cowork.conf` 复制到 Nginx 站点目录，替换 `YOUR_DOMAIN`，配置已有的 Let's Encrypt 证书路径，然后执行 `sudo nginx -t && sudo systemctl reload nginx`。Nginx 反代 `127.0.0.1:3000`；Compose 不暴露数据库端口。
-
-首次或每次发布：
+发布或更新 App：
 
 ```bash
 cd /opt/online-cowork/app
 git pull --ff-only
 sh scripts/deploy-production.sh
-curl -fsS https://YOUR_DOMAIN/api/health/ready
+curl -fsS http://127.0.0.1:3000/api/health/ready
 ```
 
-脚本执行质量门禁、在 Docker 内部网络运行生产迁移、镜像构建、App 容器替换和就绪检查，且不会执行 seed；不会停止 PostgreSQL。发布前执行 `set -a; . ./.env.production; set +a; sh scripts/backup-production.sh` 创建备份。
+发布脚本会校验运行环境、执行迁移、构建镜像并检查就绪状态；不会执行 seed，也不会停止 PostgreSQL。
 
-## 发布前
+## 备份与回滚
 
-设置生产 `DATABASE_URL`、`ADMIN_EMAIL`、`ADMIN_PASSWORD_HASH`、`SESSION_SECRET`、`PROJECT_TOKEN_PEPPER`、HTTPS `APP_URL` 与可选 `APP_RELEASE`。不得提交真实值。依次运行 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`；生产仅执行 `pnpm db:migrate`，不得执行 `pnpm db:seed`。
+发布前执行备份：
 
-## 发布与验证
+```bash
+set -a; . ./.env.production; set +a
+sh scripts/backup-production.sh
+```
 
-保存上一稳定构建，迁移前创建数据库备份；迁移成功且 `/api/health/ready` 返回 200 后切换流量。用 `E2E_ADMIN_EMAIL`、`E2E_ADMIN_PASSWORD` 和可选 `E2E_BASE_URL` 运行 `pnpm test:e2e`，验证登录、项目链接、任务写入与刷新读取。
-
-## 服务器待办
-
-部署平台必须配置 HTTPS、日志采集、`/api/health/live` 与 `/api/health/ready` 健康检查告警、数据库定期备份与隔离恢复演练。告警应覆盖就绪失败、5xx、延迟和备份失败。
-
-## 回滚
-
-先将流量切回上一稳定应用版本。若迁移不向后兼容或数据受损，从发布前备份恢复到隔离数据库验证后再恢复生产。记录版本、迁移、验证、告警和项目删除/链接重置审计事件。
+回滚时先切换到上一稳定 App 版本。若迁移不兼容或数据受损，从发布前备份恢复到隔离数据库验证后，再恢复生产。
