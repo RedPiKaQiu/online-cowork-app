@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Online Cowork · 成员看板演示</title>
+  <style>
+    :root {
+      --bg: #f7f8f5; --card: #fff; --text: #263238; --muted: #718085;
+      --line: #e2e7e5; --soft: #f0f3f1; --primary: #398f8d; --primary-dark: #287775;
+      --primary-soft: #e5f2f1; --purple: #8868a5; --danger: #c94747;
+      --shadow: 0 12px 35px rgba(35, 55, 55, .09); --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; height: 100vh; overflow: hidden; background: var(--bg); color: var(--text); font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(57,143,141,.2); outline-offset: 2px; }
+    .app { height: 100vh; display: flex; flex-direction: column; }
+    .icon { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .topbar { flex: none; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.86); backdrop-filter: blur(18px); }
+    .topbar-inner { max-width: 1180px; min-height: 69px; margin: auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .brand { min-width: 0; display: flex; align-items: center; gap: 11px; }
+    .logo { width: 39px; height: 39px; flex: none; display: grid; place-items: center; border-radius: 13px; color: #fff; background: var(--primary); box-shadow: 0 7px 16px rgba(57,143,141,.22); }
+    .logo .icon { width: 21px; height: 21px; }
+    .project { min-width: 0; }
+    .project-title-row { display: flex; align-items: center; gap: 6px; }
+    .project h1 { margin: 0; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; line-height: 1.35; }
+    .project p { margin: 2px 0 0; max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
+    .demo-badge { flex: none; margin-left: 5px; padding: 3px 7px; border: 1px solid #c9e4e2; border-radius: 999px; background: var(--primary-soft); color: var(--primary-dark); font-size: 10px; font-weight: 700; }
+    .actions { display: flex; align-items: center; gap: 8px; }
+    .btn { min-height: 36px; border: 1px solid var(--line); border-radius: 11px; background: #fff; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: .18s ease; }
+    .btn:hover { border-color: #b8cecc; color: var(--primary-dark); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn.icon-btn { width: 32px; min-height: 32px; padding: 0; border: 0; background: transparent; color: var(--muted); }
+    .btn.icon-btn:hover { background: var(--soft); }
+    .btn.primary { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .btn.primary:hover { border-color: var(--primary-dark); background: var(--primary-dark); color: #fff; }
+    .btn.danger { border-color: #f1cece; color: var(--danger); }
+    .btn.danger:hover { background: #fff1f1; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .workspace { width: 100%; max-width: 1180px; margin: auto; padding: 16px 20px; flex: 1; min-height: 0; }
+    .board { height: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .column { min-height: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(238,242,240,.72); transition: .18s ease; }
+    .column.drag-over { border-color: var(--primary); background: var(--primary-soft); box-shadow: inset 0 0 0 1px var(--primary); }
+    .column-head { flex: none; min-height: 65px; padding: 12px 14px; border-bottom: 1px solid rgba(210,220,217,.8); display: flex; align-items: center; gap: 10px; }
+    .column-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: #fff; }
+    .column-icon.purple { background: var(--purple); }
+    .column-icon.teal { background: var(--primary); }
+    .column-info { flex: 1; }
+    .column-info h2 { margin: 0; font-size: 14px; }
+    .column-info p { margin: 2px 0 0; color: var(--muted); font-size: 11px; }
+    .count { min-width: 25px; height: 25px; padding: 0 7px; display: grid; place-items: center; border-radius: 999px; background: #fff; color: var(--muted); font-size: 11px; font-weight: 700; }
+    .task-list { flex: 1; min-height: 0; margin: 0; padding: 12px; overflow: auto; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .task-card { position: relative; flex: none; padding: 12px 12px 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 2px 7px rgba(35,55,55,.045); cursor: grab; transition: .18s ease; }
+    .task-card:hover { border-color: #bdd3d1; box-shadow: 0 7px 18px rgba(35,55,55,.085); transform: translateY(-1px); }
+    .task-card.dragging { opacity: .35; }
+    .task-card .stripe { position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 5px 5px 0; }
+    .task-main { display: flex; align-items: flex-start; gap: 8px; }
+    .grip { flex: none; margin-top: 1px; color: #aab4b4; }
+    .task-copy { flex: 1; min-width: 0; }
+    .task-copy strong { display: block; font-size: 13px; line-height: 1.5; font-weight: 650; }
+    .task-copy p { margin: 4px 0 0; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .card-edit { opacity: 0; }
+    .task-card:hover .card-edit, .card-edit:focus { opacity: 1; }
+    .task-foot { margin-top: 10px; padding-left: 25px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .assignee { min-height: 23px; }
+    .member-pill { padding: 3px 8px 3px 4px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; }
+    .avatar { width: 17px; height: 17px; display: grid; place-items: center; border-radius: 50%; background: rgba(0,0,0,.13); font-size: 9px; }
+    .unassigned { color: var(--muted); font-size: 10px; }
+    .card-actions { display: flex; align-items: center; gap: 5px; }
+    .mini { height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 10px; font-weight: 700; transition: .15s; }
+    .mini:hover { border-color: #b8cecc; color: var(--primary-dark); }
+    .mini.complete { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .mini.icon-only { width: 28px; padding: 0; justify-content: center; background: transparent; color: var(--muted); }
+    .mini.icon-only:hover { background: #fff0f0; border-color: #f0c4c4; color: var(--danger); }
+    .empty { margin: auto; padding: 34px 20px; color: var(--muted); text-align: center; font-size: 12px; }
+    .empty .icon { width: 31px; height: 31px; margin-bottom: 7px; opacity: .45; }
+    .quick-add { flex: none; border-top: 1px solid var(--line); background: rgba(255,255,255,.9); backdrop-filter: blur(18px); }
+    .quick-inner { max-width: 1180px; margin: auto; padding: 11px 20px; display: flex; align-items: center; gap: 9px; }
+    .target-switch { flex: none; padding: 3px; border-radius: 11px; background: var(--soft); display: flex; }
+    .target-switch button { height: 30px; padding: 0 11px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 700; }
+    .target-switch button.active { background: #fff; color: var(--text); box-shadow: 0 2px 6px rgba(35,55,55,.09); }
+    .quick-inner input, .field { width: 100%; border: 1px solid var(--line); border-radius: 11px; background: var(--bg); color: var(--text); }
+    .quick-inner input { height: 39px; flex: 1; min-width: 90px; padding: 0 12px; font-size: 13px; }
+    .quick-inner input:focus, .field:focus { border-color: var(--primary); outline: 3px solid rgba(57,143,141,.14); }
+    .overlay { position: fixed; inset: 0; z-index: 50; padding: 20px; display: flex; align-items: center; justify-content: center; background: rgba(24,39,41,.30); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .18s ease; }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+    .modal { width: min(440px, 100%); max-height: min(680px, calc(100vh - 40px)); overflow: auto; padding: 20px; border: 1px solid var(--line); border-radius: 20px; background: #fff; box-shadow: var(--shadow); transform: translateY(8px) scale(.985); transition: .18s ease; }
+    .overlay.open .modal { transform: none; }
+    .modal-head { margin-bottom: 17px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .modal-head h2 { margin: 0; font-size: 16px; }
+    .modal-head p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .form-group { margin-bottom: 13px; }
+    .form-group label { margin-bottom: 6px; display: block; font-size: 12px; font-weight: 700; }
+    .field { min-height: 41px; padding: 9px 11px; font-size: 13px; resize: vertical; }
+    textarea.field { min-height: 90px; }
+    .modal-foot { margin-top: 18px; display: flex; justify-content: flex-end; gap: 8px; }
+    .member-form { display: flex; gap: 8px; }
+    .member-list { margin: 16px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    .member-row { padding: 9px; border: 1px solid var(--line); border-radius: 12px; display: flex; align-items: center; gap: 10px; }
+    .member-row .big-avatar { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 50%; font-size: 11px; font-weight: 700; }
+    .member-row span:nth-child(2) { flex: 1; font-size: 13px; }
+    .done-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .done-row { padding: 11px; border: 1px solid var(--line); border-radius: 13px; display: flex; align-items: center; gap: 9px; }
+    .done-check { width: 27px; height: 27px; display: grid; place-items: center; flex: none; border-radius: 50%; background: var(--primary-soft); color: var(--primary); }
+    .done-copy { flex: 1; min-width: 0; }
+    .done-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; text-decoration: line-through; }
+    .done-copy small { color: #9aa4a4; font-size: 10px; }
+    .picker { position: fixed; z-index: 60; width: 165px; padding: 5px; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: var(--shadow); }
+    .picker button { width: 100%; min-height: 34px; padding: 5px 8px; border: 0; border-radius: 8px; background: transparent; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 11px; text-align: left; }
+    .picker button:hover { background: var(--primary-soft); }
+    .dot { width: 11px; height: 11px; flex: none; border-radius: 50%; }
+    .toast-wrap { position: fixed; right: 18px; bottom: 79px; z-index: 80; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { max-width: 320px; padding: 10px 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.96); box-shadow: var(--shadow); font-size: 12px; animation: toast-in .22s ease both; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+    .welcome { position: fixed; left: 50%; top: 82px; z-index: 40; width: min(520px, calc(100% - 32px)); padding: 12px 14px; border: 1px solid #c9e4e2; border-radius: 14px; background: rgba(239,249,248,.97); box-shadow: 0 9px 30px rgba(35,55,55,.09); display: flex; align-items: center; gap: 11px; transform: translateX(-50%); }
+    .welcome-copy { flex: 1; }
+    .welcome strong { display: block; color: var(--primary-dark); font-size: 12px; }
+    .welcome span { color: #557775; font-size: 11px; }
+    .spin { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 780px) {
+      body { height: auto; min-height: 100vh; overflow: auto; }
+      .app { min-height: 100vh; height: auto; }
+      .topbar { position: sticky; top: 0; z-index: 20; }
+      .topbar-inner { padding: 10px 13px; }
+      .project p { display: none; }
+      .demo-badge { display: none; }
+      .actions .label { display: none; }
+      .actions .btn { width: 37px; padding: 0; }
+      .workspace { padding: 12px; }
+      .board { display: flex; flex-direction: column; }
+      .column { min-height: 360px; max-height: 66vh; }
+      .quick-add { position: sticky; bottom: 0; z-index: 20; }
+      .quick-inner { padding: 9px 12px; flex-wrap: wrap; }
+      .target-switch { order: 1; }
+      .quick-inner input { order: 3; flex-basis: calc(100% - 88px); }
+      .quick-inner .primary { order: 4; }
+      #resetButton { order: 2; margin-left: auto; }
+      .welcome { top: 72px; }
+      .task-foot { padding-left: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 4h16l2 11h-5l-2 3H9l-2-3H2L4 4Z"/></symbol>
+    <symbol id="i-todo" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 11 2 2 4-4M8 17h8"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="m9 14-4-4 4-4M5 10h9a5 5 0 0 1 5 5v1"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></symbol>
+    <symbol id="i-userplus" viewBox="0 0 24 24"><path d="M15 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M16 11h6"/></symbol>
+  </svg>
+  <div class="app">
+    <header class="topbar"><div class="topbar-inner">
+      <div class="brand"><span class="logo"><svg class="icon"><use href="#i-list"/></svg></span><div class="project"><div class="project-title-row"><h1 id="projectName"></h1><span class="demo-badge">本地演示</span><button class="btn icon-btn" id="editProject" aria-label="编辑项目资料"><svg class="icon"><use href="#i-edit"/></svg></button></div><p id="projectDescription"></p></div></div>
+      <div class="actions">
+        <button class="btn" id="refreshButton"><svg class="icon"><use href="#i-refresh"/></svg><span class="label">刷新最新数据</span></button>
+        <button class="btn" id="membersButton"><svg class="icon"><use href="#i-users"/></svg><span class="label">成员 </span><span id="memberCount"></span></button>
+        <button class="btn" id="doneButton"><svg class="icon"><use href="#i-check"/></svg><span class="label">已完成 </span><span id="doneCount"></span></button>
+      </div>
+    </div></header>
+    <main class="workspace"><div class="board">
+      <section class="column" data-column="box"><header class="column-head"><span class="column-icon purple"><svg class="icon"><use href="#i-inbox"/></svg></span><div class="column-info"><h2>事项盒子</h2><p>将来计划要做的功能</p></div><span class="count" id="boxCount"></span></header><ul class="task-list" id="boxList" data-column="box"></ul></section>
+      <section class="column" data-column="todo"><header class="column-head"><span class="column-icon teal"><svg class="icon"><use href="#i-todo"/></svg></span><div class="column-info"><h2>当前待办</h2><p>正在推进的事项</p></div><span class="count" id="todoCount"></span></header><ul class="task-list" id="todoList" data-column="todo"></ul></section>
+    </div></main>
+    <footer class="quick-add"><form class="quick-inner" id="quickForm"><div class="target-switch"><button type="button" class="active" data-target="box">事项盒子</button><button type="button" data-target="todo">当前待办</button></div><input id="quickInput" maxlength="120" placeholder="快速添加一个事项，回车即可创建…" aria-label="新事项标题"><button class="btn primary" type="submit"><svg class="icon"><use href="#i-plus"/></svg>添加</button><button class="btn" type="button" id="resetButton" title="恢复初始演示数据"><svg class="icon"><use href="#i-refresh"/></svg><span class="label">重置 Demo</span></button></form></footer>
+  </div>
+  <div class="welcome" id="welcome"><svg class="icon" style="color:var(--primary);width:23px;height:23px"><use href="#i-todo"/></svg><div class="welcome-copy"><strong>欢迎体验成员协作看板</strong><span>试试添加一个事项，或将任务推进到“当前待办”。所有操作只保存在本机。</span></div><button class="btn icon-btn" id="welcomeClose" aria-label="关闭引导"><svg class="icon"><use href="#i-close"/></svg></button></div>
+  <div id="modalRoot"></div><div id="pickerRoot"></div><div class="toast-wrap" id="toastWrap"></div>
+  <script>
+  (() => {
+    'use strict';
+    const KEY = 'online-cowork-static-demo-v1';
+    const COLORS = [
+      { bg:'#dcecf7', fg:'#24536f' }, { bg:'#f4dfd4', fg:'#713e2b' },
+      { bg:'#e5def4', fg:'#513f72' }, { bg:'#dceede', fg:'#315e37' },
+      { bg:'#f4e7c9', fg:'#6b5220' }
+    ];
+    const initialState = {
+      project: { name:'官网改版计划', description:'一起推进新版官网从策划到上线' },
+      members: [
+        { id:'m1', name:'小林', color:'#dcecf7', fg:'#24536f' },
+        { id:'m2', name:'小周', color:'#f4dfd4', fg:'#713e2b' },
+        { id:'m3', name:'阿哲', color:'#e5def4', fg:'#513f72' }
+      ],
+      tasks: {
+        box: [
+          { id:'t1', title:'整理客户案例', description:'从过往项目中筛选 3 个代表性案例', assigneeId:null },
+          { id:'t2', title:'策划上线活动', description:'准备社交媒体发布节奏与内容清单', assigneeId:null },
+          { id:'t3', title:'补充帮助中心', description:'整理新版常见问题和新手指引', assigneeId:null }
+        ],
+        todo: [
+          { id:'t4', title:'确认首页文案', description:'聚焦核心价值，减少首屏信息密度', assigneeId:'m1' },
+          { id:'t5', title:'完成移动端适配', description:'重点检查导航、项目卡片和表单体验', assigneeId:'m3' },
+          { id:'t6', title:'准备产品截图', description:'补齐看板、成员管理和项目设置截图', assigneeId:'m2' }
+        ],
+        done: [
+          { id:'t7', title:'确定视觉方向', description:'采用轻量、可信赖的协作产品风格', assigneeId:'m2' },
+          { id:'t8', title:'梳理网站结构', description:'完成页面层级和主导航确认', assigneeId:'m1' }
+        ]
+      }
+    };
+    const clone = value => JSON.parse(JSON.stringify(value));
+    let state = load();
+    let quickTarget = 'box';
+    let dragged = null;
+    const $ = selector => document.querySelector(selector);
+    const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const icon = id => `<svg class="icon"><use href="#i-${id}"/></svg>`;
+    const uid = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+    function load() { try { const saved = localStorage.getItem(KEY); return saved ? JSON.parse(saved) : clone(initialState); } catch { return clone(initialState); } }
+    function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+    function findTask(id) { for (const column of ['box','todo','done']) { const index = state.tasks[column].findIndex(t => t.id === id); if (index >= 0) return { column, index, task:state.tasks[column][index] }; } return null; }
+    function member(id) { return state.members.find(m => m.id === id); }
+    function toast(message) { const el = document.createElement('div'); el.className='toast'; el.textContent=message; $('#toastWrap').append(el); setTimeout(() => { el.style.opacity='0'; setTimeout(() => el.remove(), 220); }, 2300); }
+    function persist(message) { save(); render(); if (message) toast(message); }
+    function taskHtml(task, column) {
+      const m = member(task.assigneeId);
+      const assignee = m ? `<span class="member-pill" style="background:${m.color};color:${m.fg}"><span class="avatar">${esc(m.name.slice(0,1))}</span>${esc(m.name)}</span>` : (column === 'todo' ? '<span class="unassigned">未分配</span>' : '');
+      const mainAction = column === 'box' ? `<button class="mini" data-action="move" data-id="${task.id}">移到待办 ${icon('arrow')}</button>` : `<button class="mini complete" data-action="complete" data-id="${task.id}">${icon('check')} 完成</button>`;
+      const assign = column === 'todo' ? `<button class="mini" data-action="assign" data-id="${task.id}" aria-label="分配成员">${icon('userplus')}</button>` : '';
+      return `<li class="task-card" draggable="true" data-id="${task.id}" data-column="${column}">${m ? `<span class="stripe" style="background:${m.color}"></span>` : ''}<div class="task-main"><span class="grip">${icon('grip')}</span><div class="task-copy"><strong>${esc(task.title)}</strong>${task.description ? `<p>${esc(task.description)}</p>`:''}</div><button class="btn icon-btn card-edit" data-action="edit" data-id="${task.id}" aria-label="编辑事项">${icon('edit')}</button></div><div class="task-foot"><div class="assignee">${assignee}</div><div class="card-actions">${assign}${mainAction}<button class="mini icon-only" data-action="delete" data-id="${task.id}" aria-label="删除事项">${icon('trash')}</button></div></div></li>`;
+    }
+    function renderColumn(column) {
+      const list = $(`#${column}List`); const tasks = state.tasks[column];
+      list.innerHTML = tasks.length ? tasks.map(t => taskHtml(t,column)).join('') : `<li class="empty">${icon(column==='box'?'inbox':'todo')}<br>暂无事项</li>`;
+      $(`#${column}Count`).textContent=tasks.length;
+    }
+    function render() {
+      $('#projectName').textContent=state.project.name; $('#projectDescription').textContent=state.project.description;
+      $('#memberCount').textContent=state.members.length; $('#doneCount').textContent=state.tasks.done.length;
+      renderColumn('box'); renderColumn('todo'); bindCards();
+    }
+    function bindCards() {
+      document.querySelectorAll('.task-card').forEach(card => {
+        card.addEventListener('dragstart', e => { dragged={ id:card.dataset.id, from:card.dataset.column }; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+        card.addEventListener('dragend', () => { card.classList.remove('dragging'); document.querySelectorAll('.column').forEach(c=>c.classList.remove('drag-over')); dragged=null; });
+      });
+    }
+    document.querySelectorAll('.task-list').forEach(list => {
+      list.addEventListener('dragover', e => { e.preventDefault(); list.closest('.column').classList.add('drag-over'); });
+      list.addEventListener('dragleave', e => { if (!list.contains(e.relatedTarget)) list.closest('.column').classList.remove('drag-over'); });
+      list.addEventListener('drop', e => {
+        e.preventDefault(); const to=list.dataset.column; list.closest('.column').classList.remove('drag-over'); if(!dragged) return;
+        const source=findTask(dragged.id); if(!source) return; const [task]=state.tasks[source.column].splice(source.index,1); if(to==='box') task.assigneeId=null;
+        const after=e.target.closest('.task-card'); let index=state.tasks[to].length;
+        if(after && after.dataset.id !== dragged.id) { const rect=after.getBoundingClientRect(); const foundIndex=state.tasks[to].findIndex(t=>t.id===after.dataset.id); if(foundIndex >= 0) index=foundIndex+(e.clientY>rect.top+rect.height/2?1:0); }
+        state.tasks[to].splice(Math.max(0,index),0,task); persist(to==='todo'?'事项已移到当前待办':'事项已放回事项盒子');
+      });
+    });
+    document.addEventListener('click', e => {
+      const target=e.target.closest('[data-action]'); if(!target) return; const { action,id }=target.dataset;
+      if(action==='move') moveTask(id,'todo','事项已移到当前待办');
+      if(action==='complete') moveTask(id,'done','做得好，事项已完成');
+      if(action==='delete') removeTask(id);
+      if(action==='edit') openTaskEditor(id);
+      if(action==='assign') openPicker(target,id);
+    });
+    function moveTask(id,to,message) { const found=findTask(id); if(!found)return; const [task]=state.tasks[found.column].splice(found.index,1); if(to==='box')task.assigneeId=null; state.tasks[to].push(task); persist(message); }
+    function removeTask(id) { const found=findTask(id); if(!found)return; if(!confirm(`确定删除“${found.task.title}”吗？`))return; state.tasks[found.column].splice(found.index,1); persist('事项已删除'); }
+    function openModal(title,subtitle,body,onSubmit,submitLabel='保存') {
+      const root=$('#modalRoot'); root.innerHTML=`<div class="overlay open"><section class="modal" role="dialog" aria-modal="true"><header class="modal-head"><div><h2>${esc(title)}</h2>${subtitle?`<p>${esc(subtitle)}</p>`:''}</div><button class="btn icon-btn modal-close" aria-label="关闭">${icon('close')}</button></header><form class="modal-form">${body}<footer class="modal-foot"><button type="button" class="btn modal-close">取消</button><button type="submit" class="btn primary">${esc(submitLabel)}</button></footer></form></section></div>`;
+      const close=()=>root.innerHTML=''; root.querySelectorAll('.modal-close').forEach(b=>b.onclick=close); root.querySelector('.overlay').onclick=e=>{if(e.target===e.currentTarget)close();};
+      root.querySelector('.modal-form').onsubmit=e=>{e.preventDefault(); if(onSubmit(new FormData(e.currentTarget))!==false)close();};
+      setTimeout(()=>root.querySelector('input,textarea')?.focus(),0);
+    }
+    function openTaskEditor(id) { const found=findTask(id); if(!found)return; openModal('编辑事项','更新任务标题和补充说明',`<div class="form-group"><label>事项标题</label><input class="field" name="title" maxlength="120" required value="${esc(found.task.title)}"></div><div class="form-group"><label>事项说明</label><textarea class="field" name="description" maxlength="500" placeholder="补充背景、目标或验收要求…">${esc(found.task.description)}</textarea></div>`, form=>{const title=String(form.get('title')).trim();if(!title)return false;found.task.title=title;found.task.description=String(form.get('description')).trim();persist('事项已更新');}); }
+    function openPicker(button,id) { const root=$('#pickerRoot'); const rect=button.getBoundingClientRect(); root.innerHTML=`<div class="picker">${state.members.map(m=>`<button data-member="${m.id}"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join('')}<button data-member=""><span class="dot" style="border:1px solid #aaa"></span>取消分配</button></div>`; const picker=root.firstElementChild; picker.style.left=Math.max(8,Math.min(innerWidth-173,rect.right-165))+'px'; picker.style.top=Math.min(innerHeight-picker.offsetHeight-8,rect.bottom+5)+'px'; picker.onclick=e=>{const item=e.target.closest('[data-member]');if(!item)return;const found=findTask(id);if(found){found.task.assigneeId=item.dataset.member||null;persist(item.dataset.member?'负责人已更新':'已取消分配');}root.innerHTML='';}; setTimeout(()=>document.addEventListener('click',function close(e){if(!picker.contains(e.target)&&e.target!==button){root.innerHTML='';document.removeEventListener('click',close);}}, {capture:true}),0); }
+    $('#quickForm').onsubmit=e=>{e.preventDefault();const input=$('#quickInput');const title=input.value.trim();if(!title)return;state.tasks[quickTarget].push({id:uid('task'),title,description:'',assigneeId:null});input.value='';persist(`已添加到${quickTarget==='box'?'事项盒子':'当前待办'}`);};
+    document.querySelectorAll('[data-target]').forEach(button=>button.onclick=()=>{quickTarget=button.dataset.target;document.querySelectorAll('[data-target]').forEach(b=>b.classList.toggle('active',b===button));$('#quickInput').focus();});
+    $('#refreshButton').onclick=()=>{const button=$('#refreshButton');button.disabled=true;button.querySelector('.icon').classList.add('spin');setTimeout(()=>{button.disabled=false;button.querySelector('.icon').classList.remove('spin');toast('已是最新数据（本地演示）');},700);};
+    $('#resetButton').onclick=()=>{if(!confirm('确定恢复初始演示数据吗？当前操作记录将被清除。'))return;state=clone(initialState);persist('演示数据已重置');};
+    $('#editProject').onclick=()=>openModal('编辑项目资料','在演示模式下修改会保存在当前浏览器',`<div class="form-group"><label>项目名称</label><input class="field" name="name" maxlength="120" required value="${esc(state.project.name)}"></div><div class="form-group"><label>项目说明</label><textarea class="field" name="description" maxlength="500">${esc(state.project.description)}</textarea></div>`,form=>{const name=String(form.get('name')).trim();if(!name)return false;state.project.name=name;state.project.description=String(form.get('description')).trim();persist('项目资料已更新');});
+    $('#membersButton').onclick=openMembers;
+    function openMembers(){ const body=`<div class="member-form"><input class="field" name="name" maxlength="20" placeholder="输入成员姓名…"><button class="btn primary" type="button" id="addMember">${icon('userplus')}添加</button></div><ul class="member-list">${state.members.map(m=>`<li class="member-row"><span class="big-avatar" style="background:${m.color};color:${m.fg}">${esc(m.name.slice(0,1))}</span><span>${esc(m.name)}</span><button type="button" class="btn icon-btn remove-member" data-id="${m.id}" aria-label="移除 ${esc(m.name)}">${icon('trash')}</button></li>`).join('')}</ul>`; openModal('项目成员','添加或移除参与协作的成员',body,()=>true,'完成'); const modal=$('#modalRoot');const add=modal.querySelector('#addMember');const input=modal.querySelector('[name=name]');add.onclick=()=>{const name=input.value.trim();if(!name)return;const c=COLORS[state.members.length%COLORS.length];state.members.push({id:uid('member'),name,color:c.bg,fg:c.fg});save();render();toast('成员已添加');openMembers();};modal.querySelectorAll('.remove-member').forEach(b=>b.onclick=()=>{const m=member(b.dataset.id);if(!m)return;if(!confirm(`确定移除“${m.name}”吗？相关事项会变为未分配。`))return;state.members=state.members.filter(x=>x.id!==m.id);Object.values(state.tasks).flat().forEach(t=>{if(t.assigneeId===m.id)t.assigneeId=null;});save();render();toast('成员已移除');openMembers();}); }
+    $('#doneButton').onclick=openDone;
+    function openDone(){ const tasks=state.tasks.done; const body=tasks.length?`<ul class="done-list">${tasks.map(t=>`<li class="done-row"><span class="done-check">${icon('check')}</span><div class="done-copy"><strong>${esc(t.title)}</strong><small>${member(t.assigneeId)?`由 ${esc(member(t.assigneeId).name)} 完成`:'已完成'}</small></div><button class="btn" type="button" data-restore="${t.id}">${icon('undo')}恢复</button></li>`).join('')}</ul>`:'<div class="empty">完成的事项会出现在这里</div>';openModal(`已完成 · ${tasks.length}`,'集中回顾成果，也可以将事项恢复为待办',body,()=>true,'关闭');$('#modalRoot').querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>{moveTask(b.dataset.restore,'todo','事项已恢复到当前待办');openDone();}); }
+    $('#welcomeClose').onclick=()=>{$('#welcome').remove();try{localStorage.setItem(KEY+'-welcome','1');}catch{}};
+    try { if(localStorage.getItem(KEY+'-welcome')) $('#welcome').remove(); } catch {}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#modalRoot').innerHTML='';$('#pickerRoot').innerHTML='';}});
+    render();
+  })();
+  </script>
+</body>
+</html>
