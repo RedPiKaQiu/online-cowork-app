@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">协作待办便签</title>
+  <desc id="desc">一张带折角和完成勾选的黄色便签</desc>
+  <defs>
+    <linearGradient id="paper" x1="16" y1="10" x2="51" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE88A"/>
+      <stop offset="1" stop-color="#FFD34E"/>
+    </linearGradient>
+    <filter id="shadow" x="8" y="7" width="53" height="55" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#72550A" flood-opacity=".24"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <path fill="url(#paper)" d="M16 10h25l11 11v29a5 5 0 0 1-5 5H16a5 5 0 0 1-5-5V15a5 5 0 0 1 5-5Z"/>
+    <path fill="#FFF3B8" d="M41 10v8a3 3 0 0 0 3 3h8Z"/>
+    <path fill="none" stroke="#E3B62A" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M41 10v8a3 3 0 0 0 3 3h8"/>
+    <path fill="none" stroke="#735C17" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="m20 34 6 6 12-14"/>
+    <path fill="none" stroke="#B98D16" stroke-linecap="round" stroke-width="3" d="M20 47h22"/>
+  </g>
+</svg>
