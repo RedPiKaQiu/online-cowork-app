@@ -45,13 +45,15 @@ export function TaskCard({
 
   return (
     <li
-      draggable={!pending}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      draggable={!pending && column !== "done"}
+      onDragStart={() => { if (column !== "done") onDragStart() }}
+      onDragEnd={() => { if (column !== "done") onDragEnd() }}
       onDragOver={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        onDragOverCard()
+        if (column !== "done") {
+          e.preventDefault()
+          e.stopPropagation()
+          onDragOverCard()
+        }
       }}
       className={cn(
         "group relative rounded-xl border border-border bg-card p-3 shadow-sm transition",
@@ -70,13 +72,13 @@ export function TaskCard({
       )}
 
       <div className="flex items-start gap-2 pl-1.5">
-        <button
+        {column !== "done" && <button
           type="button"
           aria-label="拖动排序"
           className="mt-0.5 cursor-grab text-muted-foreground/50 transition group-hover:text-muted-foreground active:cursor-grabbing"
         >
           <GripVertical className="size-4" />
-        </button>
+        </button>}
 
         <div className="min-w-0 flex-1">
           <p

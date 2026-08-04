@@ -44,6 +44,19 @@ describe("project snapshot database access", () => {
     })
   })
 
+  it("保留数据库返回的已完成事项时间倒序", async () => {
+    mockDb.select
+      .mockReturnValueOnce(projectQuery([{ id: "project-1", name: "One", description: "", version: 3 }]))
+      .mockReturnValueOnce(orderedQuery([]))
+      .mockReturnValueOnce(orderedQuery([
+        { id: "done-new", title: "New", description: "", status: "done", assigneeId: null, version: 1 },
+        { id: "done-old", title: "Old", description: "", status: "done", assigneeId: null, version: 1 },
+      ]))
+
+    const snapshot = await getProjectSnapshot("a".repeat(43))
+    expect(snapshot.tasks.done.map((task) => task.id)).toEqual(["done-new", "done-old"])
+  })
+
   it("treats missing and malformed tokens as the same unavailable project", async () => {
     mockDb.select.mockReturnValueOnce(projectQuery([]))
 

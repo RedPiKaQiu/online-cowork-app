@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { getTableConfig } from "drizzle-orm/pg-core"
 
@@ -22,5 +23,12 @@ describe("collaboration database schema", () => {
     expect(memberConstraints.map((constraint) => constraint.getName())).toContain(
       "members_id_project_id_key",
     )
+  })
+
+  it("stores a dedicated completion timestamp and migrates existing completed tasks", () => {
+    expect(getTableConfig(tasks).columns.map((column) => column.name)).toContain("completed_at")
+    const migration = readFileSync(new URL("./migrations/0001_brown_harrier.sql", import.meta.url), "utf8")
+    expect(migration).toContain('UPDATE "tasks" SET "completed_at" = "updated_at" WHERE "status" = \'done\'')
+    expect(migration).toContain('tasks_project_status_completed_at_position_idx')
   })
 })

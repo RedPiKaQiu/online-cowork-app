@@ -38,11 +38,17 @@ const taskSelection = {
   status: tasks.status,
   position: tasks.position,
   assigneeId: tasks.assigneeId,
+  completedAt: tasks.completedAt,
   version: tasks.version,
 }
 
 export function isTaskStatus(value: unknown): value is TaskStatus {
   return typeof value === "string" && (STATUSES as readonly string[]).includes(value)
+}
+
+export function completedAtForStatusTransition(previousStatus: TaskStatus | null, previousCompletedAt: Date | null, nextStatus: TaskStatus, now = new Date()) {
+  if (nextStatus !== "done") return null
+  return previousStatus === "done" ? previousCompletedAt : now
 }
 
 export function nextProjectMemberColor(existing: Pick<ProjectMemberSnapshot, "color">[]) {
@@ -123,7 +129,7 @@ export async function createTaskByToken(token: string, input: Record<string, unk
   if (!isTaskStatus(input.status)) throw new ProjectMutationError("任务状态无效。", 400)
   const [last] = await db.select({ position: tasks.position }).from(tasks)
     .where(and(eq(tasks.projectId, context.id), eq(tasks.status, input.status))).orderBy(desc(tasks.position)).limit(1)
-  const [task] = await db.insert(tasks).values({ ...values, projectId: context.id, status: input.status, position: (last?.position ?? -1) + 1, assigneeId: null }).returning(taskSelection)
+  const [task] = await db.insert(tasks).values({ ...values, projectId: context.id, status: input.status, position: (last?.position ?? -1) + 1, assigneeId: null, completedAt: completedAtForStatusTransition(null, null, input.status) }).returning(taskSelection)
   return toTaskSnapshot(task)
 }
 
@@ -141,7 +147,8 @@ export async function updateTaskByToken(token: string, id: string, input: Record
   const requestedAssignee = Object.hasOwn(input, "assigneeId") ? input.assigneeId : current.assigneeId
   const assigneeId = status === "box" ? null : await resolveAssignee(context.id, requestedAssignee)
   const position = status === current.status ? current.position : await nextTaskPosition(context.id, status)
-  const [task] = await db.update(tasks).set({ ...values, status, position, assigneeId, version: sql`${tasks.version} + 1`, updatedAt: new Date() })
+  const completedAt = completedAtForStatusTransition(current.status, current.completedAt, status)
+  const [task] = await db.update(tasks).set({ ...values, status, position, assigneeId, completedAt, version: sql`${tasks.version} + 1`, updatedAt: new Date() })
     .where(and(eq(tasks.id, id), eq(tasks.projectId, context.id), eq(tasks.version, expectedVersion))).returning(taskSelection)
   if (!task) throw new ProjectMutationError("任务已被其他会话更新，请刷新后重试。", 409)
   return toTaskSnapshot(task)
@@ -171,6 +178,7 @@ export async function reorderTaskByToken(token: string, input: Record<string, un
   if (typeof taskId !== "string" || !taskId || !isTaskStatus(fromStatus) || !isTaskStatus(toStatus) || typeof targetIndex !== "number" || !Number.isInteger(targetIndex) || targetIndex < 0 || typeof mutationId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(mutationId) || typeof expectedVersion !== "number" || !Number.isInteger(expectedVersion) || expectedVersion < 1) {
     throw new ProjectMutationError("任务重排请求无效。", 400)
   }
+  if (fromStatus === "done" || toStatus === "done") throw new ProjectMutationError("已完成事项不能通过拖拽排序。", 400)
   return db.transaction(async (tx) => {
     const [moving] = await tx.select(taskSelection).from(tasks).where(and(eq(tasks.id, taskId), eq(tasks.projectId, context.id)))
     if (!moving) throw new ProjectMutationError("任务不存在。", 404)
@@ -182,11 +190,11 @@ export async function reorderTaskByToken(token: string, input: Record<string, un
       : await tx.select(taskSelection).from(tasks).where(and(eq(tasks.projectId, context.id), eq(tasks.status, toStatus))).orderBy(asc(tasks.position))
     if (targetIndex > targetBase.length) throw new ProjectMutationError("目标排序位置无效。", 400)
     const target = [...targetBase]
-    target.splice(targetIndex, 0, { ...moving, status: toStatus, assigneeId: toStatus === "box" ? null : moving.assigneeId })
+    target.splice(targetIndex, 0, { ...moving, status: toStatus, assigneeId: toStatus === "box" ? null : moving.assigneeId, completedAt: null })
     const updateColumn = async (column: typeof source, status: TaskStatus) => {
       for (const [position, task] of column.entries()) {
         const moved = task.id === moving.id
-        const values = { status, position, assigneeId: task.assigneeId, updatedAt: new Date() }
+        const values = { status, position, assigneeId: task.assigneeId, completedAt: status === "done" ? task.completedAt : null, updatedAt: new Date() }
         await tx.update(tasks).set(moved ? { ...values, version: sql`${tasks.version} + 1` } : values)
           .where(and(eq(tasks.id, task.id), eq(tasks.projectId, context.id)))
       }
