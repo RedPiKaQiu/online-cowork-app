@@ -5,6 +5,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm"
 import { projects } from "@/db/schema"
 import { db } from "@/lib/db"
 import { createProjectAccessToken, createProjectAccessUrl, hashProjectAccessToken } from "@/lib/project-access"
+import { decryptProjectAccessToken, encryptProjectAccessToken } from "@/lib/project-token-encryption"
 
 export type AdminProject = {
   id: string
@@ -13,6 +14,7 @@ export type AdminProject = {
   version: number
   createdAt: Date
   updatedAt: Date
+  accessUrl: string | null
 }
 
 export class ProjectServiceError extends Error {
@@ -27,7 +29,7 @@ export class ProjectServiceError extends Error {
 type ProjectInput = { name: string; description?: string }
 
 export async function listActiveProjects(): Promise<AdminProject[]> {
-  return db
+  const rows = await db
     .select({
       id: projects.id,
       name: projects.name,
@@ -35,10 +37,18 @@ export async function listActiveProjects(): Promise<AdminProject[]> {
       version: projects.version,
       createdAt: projects.createdAt,
       updatedAt: projects.updatedAt,
+      accessTokenCiphertext: projects.accessTokenCiphertext,
     })
     .from(projects)
     .where(isNull(projects.deletedAt))
     .orderBy(desc(projects.updatedAt))
+
+  return rows.map(({ accessTokenCiphertext, ...project }) => ({
+    ...project,
+    accessUrl: accessTokenCiphertext
+      ? createProjectAccessUrl(decryptProjectAccessToken(accessTokenCiphertext), getAppUrl())
+      : null,
+  }))
 }
 
 export async function getAdminProject(id: string) {
@@ -54,9 +64,10 @@ export async function createAdminProject(input: ProjectInput) {
   const values = validateProjectInput(input)
   const token = createProjectAccessToken()
   const accessTokenHash = hashProjectAccessToken(token, getProjectTokenPepper())
+  const accessTokenCiphertext = encryptProjectAccessToken(token)
   const [project] = await db
     .insert(projects)
-    .values({ ...values, accessTokenHash })
+    .values({ ...values, accessTokenHash, accessTokenCiphertext })
     .returning(projectSelection)
 
   return { project, accessUrl: createProjectAccessUrl(token, getAppUrl()) }
@@ -85,6 +96,7 @@ export async function resetAdminProjectAccessLink(id: string, expectedVersion: n
     .update(projects)
     .set({
       accessTokenHash: hashProjectAccessToken(token, getProjectTokenPepper()),
+      accessTokenCiphertext: encryptProjectAccessToken(token),
       version: sql`${projects.version} + 1`,
       updatedAt: new Date(),
     })

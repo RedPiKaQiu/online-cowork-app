@@ -5,5 +5,5 @@ export function requiredEnv(name: string) {
 }
 
 export function productionConfig() {
-  return Object.fromEntries(["DATABASE_URL", "ADMIN_EMAIL", "ADMIN_PASSWORD_HASH", "SESSION_SECRET", "PROJECT_TOKEN_PEPPER", "APP_URL"].map((name) => [name, requiredEnv(name)]))
+  return Object.fromEntries(["DATABASE_URL", "ADMIN_EMAIL", "ADMIN_PASSWORD_HASH", "SESSION_SECRET", "PROJECT_TOKEN_PEPPER", "PROJECT_TOKEN_ENCRYPTION_KEY", "APP_URL"].map((name) => [name, requiredEnv(name)]))
 }

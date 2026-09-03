@@ -25,6 +25,7 @@ export const projects = pgTable(
     name: varchar("name", { length: 120 }).notNull(),
     description: text("description").notNull().default(""),
     accessTokenHash: varchar("access_token_hash", { length: 64 }).notNull(),
+    accessTokenCiphertext: text("access_token_ciphertext"),
     version: integer("version").notNull().default(1),
     createdAt,
     updatedAt,

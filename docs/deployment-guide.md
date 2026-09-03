@@ -24,6 +24,8 @@ chmod 600 .env.production
 
 环境变量的用途、试用默认值、安全替换方式均写在 `.env.production.example` 的注释中。默认账号为 `trial@example.com`，密码为 `try-cowork-2026`，只可用于本机或内网试用。
 
+`PROJECT_TOKEN_ENCRYPTION_KEY` 必须是 32 字节随机值的标准 base64 编码，并作为长期部署机密备份。它只用于恢复管理员界面中的项目链接，不能与 `PROJECT_TOKEN_PEPPER` 或 `SESSION_SECRET` 共用。轮换该密钥前必须先用旧密钥解密并重新加密已有 token；当前版本不提供自动轮换。若密钥丢失，匿名项目访问仍可通过已有 hash 正常工作，但管理员只能逐个重置链接来重新建立可恢复密文。
+
 `APP_URL` 默认使用服务器内部地址 `http://127.0.0.1:3000`。若需要让同一内网的其他设备访问链接，将其改为服务器实际内网 IP，例如 `http://192.168.1.20:3000`。对外访问地址由你的网络入口决定，若有变化只需更新 `APP_URL` 后重新部署。
 
 ## 一键部署（App + PostgreSQL）

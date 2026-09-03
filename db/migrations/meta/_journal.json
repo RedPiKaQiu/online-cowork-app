@@ -15,6 +15,13 @@
       "when": 1785824228464,
       "tag": "0001_brown_harrier",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788440874464,
+      "tag": "0002_puzzling_sasquatch",
+      "breakpoints": true
     }
   ]
 }

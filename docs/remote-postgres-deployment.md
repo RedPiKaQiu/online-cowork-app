@@ -111,6 +111,7 @@ sudo ss -ltnp | grep 5432
 ```dotenv
 DATABASE_URL=postgresql://cowork:实际数据库密码@<SERVER_LAN_IP>:5432/cowork_dev
 PROJECT_TOKEN_PEPPER=本地开发随机长字符串
+PROJECT_TOKEN_ENCRYPTION_KEY=32字节随机值的标准base64编码
 ```
 
 若数据库密码包含 `@`、`:`、`/`、`?`、`#`、`%`、`$` 或空格，必须在 `DATABASE_URL` 中进行 URL 编码；例如密码 `a@b#c` 应写为 `a%40b%23c`，`$` 应写为 `%24`。这也可避免 Next.js 对 `.env.local` 中 `$` 的变量展开。可在本地运行以下命令生成编码值，输出内容仅用于 `.env.local`：
@@ -188,7 +189,8 @@ DATABASE_URL=postgresql://cowork:实际数据库密码@postgres:5432/cowork_prod
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD_HASH=由 pnpm admin:hash-password 生成的 scrypt 哈希
 SESSION_SECRET=至少32字节的随机 base64url 字符串
+PROJECT_TOKEN_ENCRYPTION_KEY=32字节随机值的标准 base64 编码
 APP_URL=https://你的正式域名
 ```
 
-生产环境必须以 HTTPS 提供服务，管理员 Cookie 才会携带 `Secure` 属性。泄露管理员密码时，重新生成密码哈希；怀疑会话密钥泄露时轮换 `SESSION_SECRET`，这会使全部已登录管理员重新登录。
+生产环境必须以 HTTPS 提供服务，管理员 Cookie 才会携带 `Secure` 属性。泄露管理员密码时，重新生成密码哈希；怀疑会话密钥泄露时轮换 `SESSION_SECRET`，这会使全部已登录管理员重新登录。`PROJECT_TOKEN_ENCRYPTION_KEY` 必须单独备份；丢失后已有项目链接无法在后台恢复显示，但可逐项目重置，且重置前的匿名访问不受影响。

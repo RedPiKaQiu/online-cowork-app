@@ -15,8 +15,21 @@ test.describe("协作看板发布冒烟测试", () => {
     await expect(page.getByRole("heading", { name: "新建项目" })).toBeVisible()
     await page.getByPlaceholder("项目名称").fill(name)
     await page.getByRole("button", { name: "创建项目" }).click()
-    const link = await page.getByLabel("项目访问链接").textContent()
+    let projectCard = page.locator("article").filter({ hasText: name })
+    await expect(projectCard).toBeVisible()
+    const link = await projectCard.getByLabel("项目访问链接").textContent()
     if (!link) throw new Error("创建项目后未获得访问链接")
+
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(page.url()).origin })
+    await projectCard.getByRole("button", { name: "复制链接" }).click()
+    await expect(projectCard.locator('span[role="status"]')).toContainText("链接已复制到剪贴板")
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(link)
+
+    await page.reload()
+    projectCard = page.locator("article").filter({ hasText: name })
+    await expect(projectCard.getByLabel("项目访问链接")).toHaveText(link)
+    await projectCard.getByRole("link", { name: "打开项目" }).click()
+    await expect(page).toHaveURL(link)
 
     const guest = await browser.newPage()
     await guest.goto(link)
@@ -28,9 +41,14 @@ test.describe("协作看板发布冒烟测试", () => {
     expect((await createTask).status()).toBe(201)
     await expect(guest.getByText("由访客创建的事项")).toBeVisible()
 
-    await page.goto(link)
     await page.reload()
     await expect(page.getByText("由访客创建的事项")).toBeVisible()
     await guest.close()
+
+    await page.goto("/admin/projects")
+    projectCard = page.locator("article").filter({ hasText: name })
+    page.once("dialog", (dialog) => dialog.accept(name))
+    await projectCard.getByRole("button", { name: "删除" }).click()
+    await expect(projectCard).toHaveCount(0)
   })
 })

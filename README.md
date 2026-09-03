@@ -5,7 +5,7 @@
 ## 功能
 
 - 管理员通过邮箱和密码登录，创建、编辑和删除项目。
-- 每个项目都有不可预测的专属访问链接；链接仅保存哈希，可随时重置使旧链接失效。
+- 每个项目都有不可预测的专属访问链接；链接使用哈希鉴权并加密保存供管理员复制，可随时重置使旧链接失效。
 - 项目看板包含「事项盒子」「当前待办」和「已完成」三个状态。
 - 支持快速添加、编辑、删除、拖拽排序和移动任务，以及为任务分配成员。
 - 支持项目成员管理、项目名称和说明编辑、手动刷新最新数据。
@@ -30,14 +30,15 @@ pnpm install
 cp .env.example .env.local
 ```
 
-编辑 `.env.local`：填写可访问的 `DATABASE_URL` 和 `PROJECT_TOKEN_PEPPER`；设置管理员邮箱；然后生成管理员密码哈希与会话密钥。
+编辑 `.env.local`：填写可访问的 `DATABASE_URL` 和 `PROJECT_TOKEN_PEPPER`；设置管理员邮箱；然后生成管理员密码哈希、会话密钥与项目链接加密密钥。
 
 ```bash
 pnpm admin:hash-password '你的管理员密码'
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-将两条命令的输出分别填入 `ADMIN_PASSWORD_HASH` 和 `SESSION_SECRET`，并将 `APP_URL` 保持为本地访问地址（默认 `http://localhost:3000`）。完成后执行迁移并启动：
+将三条命令的输出分别填入 `ADMIN_PASSWORD_HASH`、`SESSION_SECRET` 和 `PROJECT_TOKEN_ENCRYPTION_KEY`，并将 `APP_URL` 保持为本地访问地址（默认 `http://localhost:3000`）。完成后执行迁移并启动：
 
 ```bash
 pnpm db:migrate
@@ -70,4 +71,4 @@ pnpm db:verify       # 校验数据库连接与结构
 
 ## Docker 部署
 
-生产环境变量、试用默认值、Docker 部署、备份与回滚请查看 [部署指导](docs/deployment-guide.md)。正式环境请使用唯一的数据库密码、管理员密码、`SESSION_SECRET` 和 `PROJECT_TOKEN_PEPPER`，且不要提交 `.env.production` 或 `.env.local`。
+生产环境变量、试用默认值、Docker 部署、备份与回滚请查看 [部署指导](docs/deployment-guide.md)。正式环境请使用唯一的数据库密码、管理员密码、`SESSION_SECRET`、`PROJECT_TOKEN_PEPPER` 和 `PROJECT_TOKEN_ENCRYPTION_KEY`，且不要提交 `.env.production` 或 `.env.local`。
