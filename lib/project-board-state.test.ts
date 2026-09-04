@@ -8,6 +8,14 @@ describe("boardReducer", () => {
     const state = boardReducer(initialBoardState(snapshot), { type: "task-upsert", status: "todo", previousId: "a", task: { ...snapshot.tasks.box[0], id: "server", version: 2 } })
     expect(state.tasks.box).toEqual([]); expect(state.tasks.todo[0].id).toBe("server")
   })
+  it("在乐观创建及服务端替换时保留负责人", () => {
+    const optimistic = { id: "local-task", title: "待办", description: "", assigneeId: "m", version: 1 }
+    let state = boardReducer(initialBoardState(snapshot), { type: "task-upsert", status: "todo", task: optimistic })
+    expect(state.tasks.todo).toMatchObject([{ id: "local-task", assigneeId: "m" }])
+
+    state = boardReducer(state, { type: "task-upsert", status: "todo", previousId: "local-task", task: { ...optimistic, id: "server-task" } })
+    expect(state.tasks.todo).toEqual([{ ...optimistic, id: "server-task" }])
+  })
   it("同列编辑在乐观更新和服务端确认后保持原位置", () => {
     const orderedSnapshot = { ...snapshot, tasks: { ...snapshot.tasks, box: [
       { ...snapshot.tasks.box[0], id: "a", title: "A" },

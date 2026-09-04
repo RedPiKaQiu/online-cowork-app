@@ -127,9 +127,12 @@ export async function createTaskByToken(token: string, input: Record<string, unk
   const context = await getProjectContext(token)
   const values = normalizeTaskInput(input)
   if (!isTaskStatus(input.status)) throw new ProjectMutationError("任务状态无效。", 400)
+  const assigneeId = input.status === "box"
+    ? null
+    : await resolveAssignee(context.id, Object.hasOwn(input, "assigneeId") ? input.assigneeId : null)
   const [last] = await db.select({ position: tasks.position }).from(tasks)
     .where(and(eq(tasks.projectId, context.id), eq(tasks.status, input.status))).orderBy(desc(tasks.position)).limit(1)
-  const [task] = await db.insert(tasks).values({ ...values, projectId: context.id, status: input.status, position: (last?.position ?? -1) + 1, assigneeId: null, completedAt: completedAtForStatusTransition(null, null, input.status) }).returning(taskSelection)
+  const [task] = await db.insert(tasks).values({ ...values, projectId: context.id, status: input.status, position: (last?.position ?? -1) + 1, assigneeId, completedAt: completedAtForStatusTransition(null, null, input.status) }).returning(taskSelection)
   return toTaskSnapshot(task)
 }
 

@@ -1,21 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockDb } = vi.hoisted(() => ({ mockDb: { select: vi.fn(), update: vi.fn() } }))
+const { mockDb } = vi.hoisted(() => ({ mockDb: { select: vi.fn(), insert: vi.fn(), update: vi.fn() } }))
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/db", () => ({ db: mockDb }))
 
 import { ProjectMutationError } from "./project-api"
 import { ProjectLinkNotFoundError } from "./project-snapshots"
-import { completedAtForStatusTransition, getProjectContext, nextProjectMemberColor, normalizeMemberName, normalizeProjectInput, normalizeTaskInput, reorderTaskList, updateMemberByToken } from "./project-mutations"
+import { completedAtForStatusTransition, createTaskByToken, getProjectContext, nextProjectMemberColor, normalizeMemberName, normalizeProjectInput, normalizeTaskInput, reorderTaskList, updateMemberByToken } from "./project-mutations"
 
 function projectQuery<T>(rows: T[]) {
   return { from: () => ({ where: () => Promise.resolve(rows) }) }
 }
 
+function orderedQuery<T>(rows: T[]) {
+  return { from: () => ({ where: () => ({ orderBy: () => ({ limit: () => Promise.resolve(rows) }) }) }) }
+}
+
 describe("project mutation rules", () => {
   beforeEach(() => {
     mockDb.select.mockReset()
+    mockDb.insert.mockReset()
     mockDb.update.mockReset()
     process.env.PROJECT_TOKEN_PEPPER = "test-pepper"
   })
@@ -71,5 +76,58 @@ describe("project mutation rules", () => {
 
     await expect(updateMemberByToken("a".repeat(43), "member-from-project-b", { name: "Ada" }))
       .rejects.toMatchObject({ status: 404, message: "成员不存在。" })
+  })
+
+  it("creates a todo with a same-project assignee in one insert", async () => {
+    const inserted: Record<string, unknown>[] = []
+    mockDb.select
+      .mockReturnValueOnce(projectQuery([{ id: "project-a", name: "A", description: "", version: 1 }]))
+      .mockReturnValueOnce(projectQuery([{ id: "member-a" }]))
+      .mockReturnValueOnce(orderedQuery([{ position: 2 }]))
+    mockDb.insert.mockReturnValue({
+      values: (values: Record<string, unknown>) => {
+        inserted.push(values)
+        return { returning: () => Promise.resolve([{ id: "task-a", ...values, version: 1 }]) }
+      },
+    })
+
+    await expect(createTaskByToken("a".repeat(43), { title: " 待办 ", status: "todo", assigneeId: "member-a" }))
+      .resolves.toMatchObject({ id: "task-a", title: "待办", status: "todo", assigneeId: "member-a" })
+    expect(inserted).toHaveLength(1)
+    expect(inserted[0]).toMatchObject({ projectId: "project-a", status: "todo", position: 3, assigneeId: "member-a" })
+  })
+
+  it("creates unassigned tasks when the assignee is omitted or the status is box", async () => {
+    const inserted: Record<string, unknown>[] = []
+    mockDb.select
+      .mockReturnValueOnce(projectQuery([{ id: "project-a", name: "A", description: "", version: 1 }]))
+      .mockReturnValueOnce(orderedQuery([]))
+      .mockReturnValueOnce(projectQuery([{ id: "project-a", name: "A", description: "", version: 1 }]))
+      .mockReturnValueOnce(orderedQuery([]))
+    mockDb.insert.mockReturnValue({
+      values: (values: Record<string, unknown>) => {
+        inserted.push(values)
+        return { returning: () => Promise.resolve([{ id: `task-${inserted.length}`, ...values, version: 1 }]) }
+      },
+    })
+
+    await createTaskByToken("a".repeat(43), { title: "未分配", status: "todo" })
+    await createTaskByToken("a".repeat(43), { title: "盒子", status: "box", assigneeId: "member-a" })
+
+    expect(inserted.map((values) => values.assigneeId)).toEqual([null, null])
+    expect(mockDb.select).toHaveBeenCalledTimes(4)
+  })
+
+  it("rejects invalid and cross-project assignees without inserting a task", async () => {
+    mockDb.select
+      .mockReturnValueOnce(projectQuery([{ id: "project-a", name: "A", description: "", version: 1 }]))
+      .mockReturnValueOnce(projectQuery([{ id: "project-a", name: "A", description: "", version: 1 }]))
+      .mockReturnValueOnce(projectQuery([]))
+
+    await expect(createTaskByToken("a".repeat(43), { title: "类型错误", status: "todo", assigneeId: 42 }))
+      .rejects.toMatchObject({ status: 400, message: "任务负责人无效。" })
+    await expect(createTaskByToken("a".repeat(43), { title: "跨项目", status: "todo", assigneeId: "member-from-project-b" }))
+      .rejects.toMatchObject({ status: 404, message: "任务负责人不存在。" })
+    expect(mockDb.insert).not.toHaveBeenCalled()
   })
 })
